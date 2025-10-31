@@ -14,11 +14,9 @@ body {
   font-family: sans-serif;
   transition: background-color 0.5s ease;
 }
-
 body.night-mode {
   background-color: #1a1a2e;
 }
-
 /* === Mapa principal === */
 #mainMap {
   position: absolute;
@@ -26,7 +24,6 @@ body.night-mode {
   height: 100%;
   transition: opacity 0.4s ease;
 }
-
 #mainMap::before {
   content: '';
   position: absolute;
@@ -39,11 +36,9 @@ body.night-mode {
   transition: background 0.5s ease;
   z-index: 1;
 }
-
 body.night-mode #mainMap::before {
   background: rgba(0, 0, 20, 0.6);
 }
-
 #viewport {
   width: 100%;
   height: 100%;
@@ -67,7 +62,6 @@ body.night-mode #mainMap::before {
   padding: 200px;
   transition: background-color 0.5s ease;
 }
-
 body.night-mode #map {
   background-color: #1a1a2e;
 }
@@ -111,30 +105,28 @@ body.night-mode #map {
 .cell:hover .owner-name {
   opacity: 1;
 }
-.grass { 
+.grass {
   background-color: #4CAF50;
   transition: background-color 0.5s ease;
 }
 body.night-mode .grass {
   background-color: #2d5016;
 }
-
-.road { 
+.road {
   background-color: #A1887F;
   transition: background-color 0.5s ease;
 }
 body.night-mode .road {
   background-color: #5d4e42;
 }
-
-.mountain { 
+.mountain {
   background-color: #9E9E9E;
   transition: background-color 0.5s ease;
 }
 body.night-mode .mountain {
   background-color: #4a4a4a;
 }
-.building { 
+.building {
   background-color: #8B4513;
   cursor: pointer;
   transition: transform 0.3s ease;
@@ -142,11 +134,10 @@ body.night-mode .mountain {
 .building:hover {
   transform: scale(1.2);
 }
-.wall { 
+.wall {
   background-color: #9E9E9E;
   cursor: pointer;
 }
-
 #gridToggle {
   position: fixed;
   top: 20px;
@@ -165,7 +156,6 @@ body.night-mode .mountain {
 #gridToggle:hover {
   background: #f0f0f0;
 }
-
 /* === Vista de la isla === */
 #islandView {
   position: absolute;
@@ -176,11 +166,9 @@ body.night-mode .mountain {
   pointer-events: none;
   transition: opacity 0.6s ease;
 }
-
 body.night-mode #islandView {
   background-color: #1a1a2e;
 }
-
 #islandViewport {
   width: 100%;
   height: 100%;
@@ -188,14 +176,12 @@ body.night-mode #islandView {
   position: relative;
   cursor: grab;
 }
-
 #islandWorld {
   position: absolute;
   transform-origin: 0 0;
   width: 100%;
   height: 100%;
 }
-
 #islandContainer {
   position: absolute;
   display: grid;
@@ -206,15 +192,12 @@ body.night-mode #islandView {
   padding: 200px;
   transition: background-color 0.5s ease;
 }
-
 body.night-mode #islandContainer {
   background-color: #1a1a2e;
 }
-
 #islandContainer.no-grid {
   gap: 0px;
 }
-
 .island-cell {
   width: 40px;
   height: 40px;
@@ -230,37 +213,36 @@ body.night-mode #islandContainer {
   font-weight: bold;
   transition: background-color 0.5s ease;
 }
-
 body.night-mode .island-cell {
   background-color: #2d5016;
 }
-
 #islandContainer.no-grid .island-cell {
   border-radius: 0px;
 }
-
 .island-cell.center {
   background-color: #8B4513;
 }
-
 body.night-mode .island-cell.center {
   background-color: #5d2e0b;
 }
-
 .island-cell.gold-mine {
   background-color: #FFD700;
   color: #000;
 }
-
 body.night-mode .island-cell.gold-mine {
   background-color: #b39700;
 }
-
+.island-cell.rocket {
+  background-color: #666;
+  color: white;
+}
+body.night-mode .island-cell.rocket {
+  background-color: #444;
+}
 .island-cell.building-hover:hover {
   background-color: rgba(255, 215, 0, 0.5);
   cursor: pointer;
 }
-
 #backButton {
   position: absolute;
   bottom: 20px;
@@ -276,11 +258,9 @@ body.night-mode .island-cell.gold-mine {
   z-index: 100;
   transition: background 0.3s;
 }
-
 #backButton:hover {
   background: #f0f0f0;
 }
-
 #islandTitle {
   position: absolute;
   top: 20px;
@@ -291,7 +271,6 @@ body.night-mode .island-cell.gold-mine {
   text-shadow: 0 0 20px rgba(0,0,0,0.8);
   z-index: 100;
 }
-
 #resourcesPanel {
   position: absolute;
   top: 20px;
@@ -306,11 +285,9 @@ body.night-mode .island-cell.gold-mine {
   box-shadow: 0 4px 15px rgba(0,0,0,0.5);
   display: none;
 }
-
 #goldAmount {
   margin-left: 10px;
 }
-
 #userInfoPanel {
   position: absolute;
   top: 20px;
@@ -324,17 +301,14 @@ body.night-mode .island-cell.gold-mine {
   display: none;
   min-width: 250px;
 }
-
 #userInfoPanel h3 {
   margin: 0 0 10px 0;
   font-size: 18px;
 }
-
 #levelInfo {
   font-size: 16px;
   margin-bottom: 8px;
 }
-
 #xpBarContainer {
   background: rgba(255, 255, 255, 0.2);
   height: 20px;
@@ -342,7 +316,6 @@ body.night-mode .island-cell.gold-mine {
   overflow: hidden;
   margin-top: 5px;
 }
-
 #xpBar {
   background: linear-gradient(90deg, #4CAF50, #8BC34A);
   height: 100%;
@@ -350,7 +323,6 @@ body.night-mode .island-cell.gold-mine {
   transition: width 0.5s ease;
   position: relative;
 }
-
 #xpBarText {
   position: absolute;
   top: 50%;
@@ -363,7 +335,6 @@ body.night-mode .island-cell.gold-mine {
   white-space: nowrap;
   pointer-events: none;
 }
-
 #shopButton {
   position: fixed;
   bottom: 20px;
@@ -381,11 +352,9 @@ body.night-mode .island-cell.gold-mine {
   transition: transform 0.3s;
   display: none;
 }
-
 #shopButton:hover {
   transform: scale(1.05);
 }
-
 #shopModal {
   position: fixed;
   top: 0;
@@ -398,7 +367,6 @@ body.night-mode .island-cell.gold-mine {
   align-items: center;
   z-index: 10000;
 }
-
 #shopContent {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 30px;
@@ -407,14 +375,12 @@ body.night-mode .island-cell.gold-mine {
   width: 90%;
   box-shadow: 0 10px 50px rgba(0,0,0,0.5);
 }
-
 #shopContent h2 {
   color: white;
   margin: 0 0 20px 0;
   text-align: center;
   font-size: 28px;
 }
-
 .shop-item {
   background: rgba(255, 255, 255, 0.9);
   padding: 20px;
@@ -424,29 +390,24 @@ body.night-mode .island-cell.gold-mine {
   justify-content: space-between;
   align-items: center;
 }
-
 .shop-item-info {
   flex: 1;
 }
-
 .shop-item-name {
   font-size: 20px;
   font-weight: bold;
   margin-bottom: 5px;
 }
-
 .shop-item-desc {
   font-size: 14px;
   color: #666;
   margin-bottom: 5px;
 }
-
 .shop-item-cost {
   font-size: 16px;
   color: #FFD700;
   font-weight: bold;
 }
-
 .shop-item button {
   padding: 10px 20px;
   background: #4CAF50;
@@ -458,16 +419,13 @@ body.night-mode .island-cell.gold-mine {
   font-size: 16px;
   transition: background 0.3s;
 }
-
 .shop-item button:hover {
   background: #45a049;
 }
-
 .shop-item button:disabled {
   background: #ccc;
   cursor: not-allowed;
 }
-
 #closeShop {
   display: block;
   margin: 20px auto 0;
@@ -480,11 +438,9 @@ body.night-mode .island-cell.gold-mine {
   cursor: pointer;
   font-size: 16px;
 }
-
 #closeShop:hover {
   background: rgba(255, 255, 255, 0.3);
 }
-
 #islandGridToggle {
   position: fixed;
   bottom: 70px;
@@ -505,7 +461,6 @@ body.night-mode .island-cell.gold-mine {
 #islandGridToggle:hover {
   background: #f0f0f0;
 }
-
 /* === Transición negra === */
 #fade {
   position: absolute;
@@ -517,7 +472,6 @@ body.night-mode .island-cell.gold-mine {
   pointer-events: none;
   z-index: 9999;
 }
-
 /* === Loading === */
 #loading {
   position: fixed;
@@ -532,7 +486,6 @@ body.night-mode .island-cell.gold-mine {
   z-index: 10000;
   display: none;
 }
-
 /* === Login Modal === */
 #loginModal {
   position: fixed;
@@ -546,7 +499,6 @@ body.night-mode .island-cell.gold-mine {
   align-items: center;
   z-index: 20000;
 }
-
 #loginContent {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 40px;
@@ -555,20 +507,17 @@ body.night-mode .island-cell.gold-mine {
   width: 90%;
   box-shadow: 0 10px 50px rgba(0,0,0,0.5);
 }
-
 #loginContent h2 {
   color: white;
   margin: 0 0 30px 0;
   text-align: center;
   font-size: 32px;
 }
-
 .login-tabs {
   display: flex;
   gap: 10px;
   margin-bottom: 20px;
 }
-
 .tab-button {
   flex: 1;
   padding: 12px;
@@ -581,34 +530,27 @@ body.night-mode .island-cell.gold-mine {
   font-size: 16px;
   transition: background 0.3s;
 }
-
 .tab-button.active {
   background: rgba(255, 255, 255, 0.4);
 }
-
 .tab-button:hover {
   background: rgba(255, 255, 255, 0.3);
 }
-
 .login-form {
   display: none;
 }
-
 .login-form.active {
   display: block;
 }
-
 .form-group {
   margin-bottom: 20px;
 }
-
 .form-group label {
   display: block;
   color: white;
   margin-bottom: 8px;
   font-weight: bold;
 }
-
 .form-group input {
   width: 100%;
   padding: 12px;
@@ -617,11 +559,9 @@ body.night-mode .island-cell.gold-mine {
   font-size: 16px;
   box-sizing: border-box;
 }
-
 .form-group input:focus {
   outline: 2px solid white;
 }
-
 .login-button {
   width: 100%;
   padding: 15px;
@@ -634,11 +574,9 @@ body.night-mode .island-cell.gold-mine {
   font-size: 18px;
   transition: background 0.3s;
 }
-
 .login-button:hover {
   background: #45a049;
 }
-
 .error-message {
   color: #ffcccc;
   background: rgba(255, 0, 0, 0.2);
@@ -648,7 +586,6 @@ body.night-mode .island-cell.gold-mine {
   text-align: center;
   display: none;
 }
-
 #logoutButton {
   position: fixed;
   top: 70px;
@@ -664,11 +601,9 @@ body.night-mode .island-cell.gold-mine {
   z-index: 1000;
   transition: background 0.3s;
 }
-
 #logoutButton:hover {
   background: #f0f0f0;
 }
-
 #dayNightToggle {
   position: fixed;
   top: 120px;
@@ -683,11 +618,9 @@ body.night-mode .island-cell.gold-mine {
   z-index: 1000;
   transition: background 0.3s;
 }
-
 #dayNightToggle:hover {
   background: #f0f0f0;
 }
-
 #achievementsButton {
   position: fixed;
   top: 170px;
@@ -704,11 +637,9 @@ body.night-mode .island-cell.gold-mine {
   z-index: 1000;
   transition: transform 0.3s;
 }
-
 #achievementsButton:hover {
   transform: scale(1.05);
 }
-
 /* === Botón de logros en la vista de isla === */
 #islandAchievementsButton {
   position: fixed;
@@ -728,11 +659,9 @@ body.night-mode .island-cell.gold-mine {
   opacity: 0;
   pointer-events: none;
 }
-
 #islandAchievementsButton:hover {
   transform: scale(1.05);
 }
-
 /* === Top Players Button & Modal === */
 #topPlayersButton {
   position: fixed;
@@ -750,11 +679,9 @@ body.night-mode .island-cell.gold-mine {
   z-index: 1000;
   transition: transform 0.3s;
 }
-
 #topPlayersButton:hover {
   transform: scale(1.05);
 }
-
 #topPlayersModal {
   position: fixed;
   top: 0;
@@ -767,7 +694,6 @@ body.night-mode .island-cell.gold-mine {
   align-items: center;
   z-index: 10000;
 }
-
 #topPlayersContent {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   padding: 30px;
@@ -778,14 +704,12 @@ body.night-mode .island-cell.gold-mine {
   overflow-y: auto;
   box-shadow: 0 10px 50px rgba(0,0,0,0.5);
 }
-
 #topPlayersContent h2 {
   color: white;
   margin: 0 0 20px 0;
   text-align: center;
   font-size: 28px;
 }
-
 .top-player-item {
   background: rgba(255, 255, 255, 0.9);
   padding: 15px 20px;
@@ -797,54 +721,44 @@ body.night-mode .island-cell.gold-mine {
   cursor: pointer;
   transition: transform 0.2s, background 0.2s;
 }
-
 .top-player-item:hover {
   transform: translateX(5px);
   background: rgba(255, 255, 255, 1);
 }
-
 .top-player-rank {
   font-size: 24px;
   font-weight: bold;
   width: 40px;
   text-align: center;
 }
-
 .top-player-rank.first {
   color: #FFD700;
 }
-
 .top-player-rank.second {
   color: #C0C0C0;
 }
-
 .top-player-rank.third {
   color: #CD7F32;
 }
-
 .top-player-info {
   flex: 1;
   margin-left: 15px;
 }
-
 .top-player-name {
   font-size: 18px;
   font-weight: bold;
   color: #333;
 }
-
 .top-player-stats {
   font-size: 14px;
   color: #666;
   margin-top: 3px;
 }
-
 .top-player-xp {
   font-size: 16px;
   font-weight: bold;
   color: #4CAF50;
 }
-
 #closeTopPlayers {
   display: block;
   margin: 20px auto 0;
@@ -857,18 +771,15 @@ body.night-mode .island-cell.gold-mine {
   cursor: pointer;
   font-size: 16px;
 }
-
 #closeTopPlayers:hover {
   background: rgba(255, 255, 255, 0.3);
 }
-
 .no-players-message {
   color: white;
   text-align: center;
   padding: 20px;
   font-size: 16px;
 }
-
 /* === Achievements Modal === */
 #achievementsModal {
   position: fixed;
@@ -882,7 +793,6 @@ body.night-mode .island-cell.gold-mine {
   align-items: center;
   z-index: 10000;
 }
-
 #achievementsContent {
   background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
   padding: 30px;
@@ -893,14 +803,12 @@ body.night-mode .island-cell.gold-mine {
   overflow-y: auto;
   box-shadow: 0 10px 50px rgba(0,0,0,0.5);
 }
-
 #achievementsContent h2 {
   color: white;
   margin: 0 0 20px 0;
   text-align: center;
   font-size: 28px;
 }
-
 .achievement-item {
   background: rgba(255, 255, 255, 0.9);
   padding: 15px 20px;
@@ -910,51 +818,42 @@ body.night-mode .island-cell.gold-mine {
   align-items: center;
   gap: 15px;
 }
-
 .achievement-item.unlocked {
   background: rgba(76, 175, 80, 0.2);
   border: 2px solid #4CAF50;
 }
-
 .achievement-icon {
   font-size: 40px;
   min-width: 50px;
   text-align: center;
 }
-
 .achievement-info {
   flex: 1;
 }
-
 .achievement-name {
   font-size: 18px;
   font-weight: bold;
   color: #333;
 }
-
 .achievement-desc {
   font-size: 14px;
   color: #666;
   margin-top: 3px;
 }
-
 .achievement-reward {
   font-size: 12px;
   color: #4CAF50;
   font-weight: bold;
   margin-top: 5px;
 }
-
 .achievement-status {
   font-size: 16px;
   font-weight: bold;
   color: #4CAF50;
 }
-
 .achievement-status.locked {
   color: #999;
 }
-
 #closeAchievements {
   display: block;
   margin: 20px auto 0;
@@ -967,11 +866,9 @@ body.night-mode .island-cell.gold-mine {
   cursor: pointer;
   font-size: 16px;
 }
-
 #closeAchievements:hover {
   background: rgba(255, 255, 255, 0.3);
 }
-
 /* === Tutorial Modal === */
 #tutorialModal {
   position: fixed;
@@ -985,7 +882,6 @@ body.night-mode .island-cell.gold-mine {
   align-items: center;
   z-index: 15000;
 }
-
 #tutorialContent {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 40px;
@@ -995,40 +891,33 @@ body.night-mode .island-cell.gold-mine {
   box-shadow: 0 10px 50px rgba(0,0,0,0.5);
   text-align: center;
 }
-
 #tutorialContent h2 {
   color: white;
   margin: 0 0 20px 0;
   font-size: 32px;
 }
-
 .tutorial-step {
   display: none;
   color: white;
 }
-
 .tutorial-step.active {
   display: block;
 }
-
 .tutorial-icon {
   font-size: 80px;
   margin: 20px 0;
 }
-
 .tutorial-text {
   font-size: 18px;
   line-height: 1.6;
   margin: 20px 0;
 }
-
 .tutorial-buttons {
   display: flex;
   gap: 15px;
   margin-top: 30px;
   justify-content: center;
 }
-
 .tutorial-button {
   padding: 15px 30px;
   border: none;
@@ -1038,22 +927,18 @@ body.night-mode .island-cell.gold-mine {
   cursor: pointer;
   transition: transform 0.2s;
 }
-
 .tutorial-button:hover {
   transform: scale(1.05);
 }
-
 .tutorial-button.primary {
   background: #4CAF50;
   color: white;
 }
-
 .tutorial-button.secondary {
   background: rgba(255, 255, 255, 0.2);
   color: white;
   border: 2px solid white;
 }
-
 .tutorial-progress {
   color: rgba(255, 255, 255, 0.7);
   margin-top: 20px;
@@ -1062,7 +947,6 @@ body.night-mode .island-cell.gold-mine {
 </style>
 </head>
 <body>
-
 <!-- Mapa principal -->
 <div id="mainMap">
   <div id="viewport">
@@ -1076,14 +960,13 @@ body.night-mode .island-cell.gold-mine {
   <button id="achievementsButton" onclick="openAchievements()">🏆 Logros</button>
   <button id="topPlayersButton" onclick="openTopPlayers()">🏆 Top Jugadores</button>
 </div>
-
 <!-- Vista de isla -->
 <div id="islandView">
   <button id="backButton" onclick="backToMap()">← Volver al Mapa</button>
   <button id="islandGridToggle" onclick="toggleIslandGrid()">Quitar Cuadrícula</button>
   <button id="islandAchievementsButton" onclick="openAchievements()">🏆 Logros</button>
   <div id="islandTitle">Aldea de <span id="ownerName"></span></div>
-  
+ 
   <div id="userInfoPanel">
     <h3 id="userName"></h3>
     <div id="levelInfo">Nivel: <span id="userLevel">1</span></div>
@@ -1092,25 +975,24 @@ body.night-mode .island-cell.gold-mine {
       <div id="xpBarText">0 / 100 XP</div>
     </div>
   </div>
-  
+ 
   <div id="resourcesPanel">
     💰<span id="goldAmount">0</span>
   </div>
-  
+ 
   <button id="shopButton" onclick="openShop()">🛒 Tienda</button>
-  
+ 
   <div id="islandViewport">
     <div id="islandWorld">
       <div id="islandContainer"></div>
     </div>
   </div>
 </div>
-
 <!-- Modal de Tienda -->
 <div id="shopModal">
   <div id="shopContent">
     <h2>🛒 Tienda</h2>
-    
+   
     <div class="shop-item">
       <div class="shop-item-info">
         <div class="shop-item-name">⛏️ Mina de Oro</div>
@@ -1120,11 +1002,20 @@ body.night-mode .island-cell.gold-mine {
       </div>
       <button id="buyMineBtn" onclick="buyMine()">Comprar</button>
     </div>
-    
+   
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">🚀 Cohete Espacial</div>
+        <div class="shop-item-desc">Estructura avanzada para exploración futura</div>
+        <div class="shop-item-desc">Tienes: <span id="rocketCount">0</span> / 1</div>
+        <div class="shop-item-cost">💰 2000 Oro</div>
+      </div>
+      <button id="buyRocketBtn" onclick="buyRocket()">Comprar</button>
+    </div>
+   
     <button id="closeShop" onclick="closeShop()">Cerrar</button>
   </div>
 </div>
-
 <!-- Modal de Top Jugadores -->
 <div id="topPlayersModal">
   <div id="topPlayersContent">
@@ -1133,7 +1024,6 @@ body.night-mode .island-cell.gold-mine {
     <button id="closeTopPlayers" onclick="closeTopPlayers()">Cerrar</button>
   </div>
 </div>
-
 <!-- Modal de Logros -->
 <div id="achievementsModal">
   <div id="achievementsContent">
@@ -1142,7 +1032,6 @@ body.night-mode .island-cell.gold-mine {
     <button id="closeAchievements" onclick="closeAchievements()">Cerrar</button>
   </div>
 </div>
-
 <!-- Modal de Tutorial -->
 <div id="tutorialModal">
   <div id="tutorialContent">
@@ -1155,7 +1044,7 @@ body.night-mode .island-cell.gold-mine {
           Este es un juego de construcción y estrategia donde podrás crear tu propia aldea y competir con otros jugadores.
         </div>
       </div>
-      
+     
       <div class="tutorial-step" data-step="2">
         <div class="tutorial-icon">🏰</div>
         <div class="tutorial-text">
@@ -1163,7 +1052,7 @@ body.night-mode .island-cell.gold-mine {
           Solo puedes construir una aldea, ¡así que elige bien la ubicación!
         </div>
       </div>
-      
+     
       <div class="tutorial-step" data-step="3">
         <div class="tutorial-icon">🏝️</div>
         <div class="tutorial-text">
@@ -1171,7 +1060,7 @@ body.night-mode .island-cell.gold-mine {
           Aquí podrás construir edificios y mejorar tu aldea.
         </div>
       </div>
-      
+     
       <div class="tutorial-step" data-step="4">
         <div class="tutorial-icon">💰</div>
         <div class="tutorial-text">
@@ -1179,7 +1068,7 @@ body.night-mode .island-cell.gold-mine {
           El oro te permite comprar más edificios y mejorar tu aldea.
         </div>
       </div>
-      
+     
       <div class="tutorial-step" data-step="5">
         <div class="tutorial-icon">📈</div>
         <div class="tutorial-text">
@@ -1187,7 +1076,7 @@ body.night-mode .island-cell.gold-mine {
           Sube de nivel para desbloquear más contenido y aparecer en el ranking.
         </div>
       </div>
-      
+     
       <div class="tutorial-step" data-step="6">
         <div class="tutorial-icon">🎮</div>
         <div class="tutorial-text">
@@ -1197,34 +1086,31 @@ body.night-mode .island-cell.gold-mine {
         </div>
       </div>
     </div>
-    
+   
     <div class="tutorial-buttons">
       <button class="tutorial-button secondary" id="tutorialPrev" onclick="prevTutorialStep()">← Anterior</button>
       <button class="tutorial-button primary" id="tutorialNext" onclick="nextTutorialStep()">Siguiente →</button>
     </div>
-    
+   
     <div class="tutorial-progress">
       Paso <span id="tutorialCurrentStep">1</span> de <span id="tutorialTotalSteps">6</span>
     </div>
   </div>
 </div>
-
 <!-- Fade de transición -->
 <div id="fade"></div>
-
 <!-- Loading -->
 <div id="loading">Cargando...</div>
-
 <!-- Login Modal -->
 <div id="loginModal">
   <div id="loginContent">
     <h2>🏰 Aldeas</h2>
-    
+   
     <div class="login-tabs">
       <button class="tab-button active" onclick="showLoginTab()">Iniciar Sesión</button>
       <button class="tab-button" onclick="showRegisterTab()">Registrarse</button>
     </div>
-    
+   
     <div id="loginForm" class="login-form active">
       <div class="form-group">
         <label>Nombre de Usuario</label>
@@ -1237,7 +1123,7 @@ body.night-mode .island-cell.gold-mine {
       <button class="login-button" onclick="handleLogin()">Entrar</button>
       <div class="error-message" id="loginError"></div>
     </div>
-    
+   
     <div id="registerForm" class="login-form">
       <div class="form-group">
         <label>Nombre de Usuario</label>
@@ -1256,11 +1142,9 @@ body.night-mode .island-cell.gold-mine {
     </div>
   </div>
 </div>
-
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
 const firebaseConfig = {
   apiKey: "AIzaSyClTAw_XLfH3UcCKTisTREZchz41tTxL7g",
   authDomain: "projectmap-382dd.firebaseapp.com",
@@ -1271,10 +1155,8 @@ const firebaseConfig = {
   appId: "1:1016267509437:web:fa243dd82b151383ccb1d4",
   measurementId: "G-4ECYZ37F17"
 };
-
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-
 const rows = 50;
 const cols = 50;
 const mapEl = document.getElementById('map');
@@ -1302,6 +1184,8 @@ const shopButton = document.getElementById('shopButton');
 const shopModal = document.getElementById('shopModal');
 const mineCountEl = document.getElementById('mineCount');
 const buyMineBtn = document.getElementById('buyMineBtn');
+const rocketCountEl = document.getElementById('rocketCount');
+const buyRocketBtn = document.getElementById('buyRocketBtn');
 const loginModal = document.getElementById('loginModal');
 const loginUsername = document.getElementById('loginUsername');
 const loginPassword = document.getElementById('loginPassword');
@@ -1316,11 +1200,9 @@ const achievementsModal = document.getElementById('achievementsModal');
 const achievementsList = document.getElementById('achievementsList');
 const tutorialModal = document.getElementById('tutorialModal');
 const dayNightToggle = document.getElementById('dayNightToggle');
-
 let isNightMode = false;
 let currentTutorialStep = 1;
 let achievements = {};
-
 // Definición de logros
 const achievementDefinitions = {
   firstVillage: {
@@ -1378,9 +1260,15 @@ const achievementDefinitions = {
     description: 'Visita la aldea de otro jugador',
     icon: '🗺️',
     reward: '+25 XP'
+  },
+  rocket: {
+    id: 'rocket',
+    name: 'Pionero Espacial',
+    description: 'Construye el cohete espacial',
+    icon: '🚀',
+    reward: '+500 XP'
   }
 };
-
 let gridVisible = true;
 let islandGridVisible = true;
 let userName = null;
@@ -1388,11 +1276,13 @@ let userHasBuilt = false;
 let currentVillageOwner = null;
 let currentGold = 0;
 let goldMines = [];
+let rockets = [];
 let userLevel = 1;
 let userXP = 0;
 let xpNeeded = 100;
 let isPlacingMine = false;
-
+let isPlacingRocket = false;
+let firstTickDelay = 5000;
 // Variables para la isla
 let islandDragging = false;
 let islandHasDragged = false;
@@ -1400,18 +1290,17 @@ let islandStartX, islandStartY;
 let islandTranslateX = 0;
 let islandTranslateY = 0;
 let islandScale = 1;
-
 // Verificar si hay sesión guardada
 function checkSession() {
   const savedUser = localStorage.getItem('currentUser');
   const tutorialCompleted = localStorage.getItem('tutorialCompleted');
-  
+ 
   if (savedUser) {
     userName = savedUser;
     loginModal.style.display = 'none';
     checkIfUserHasBuilt();
     loadAchievements();
-    
+   
     // Mostrar tutorial si es primera vez
     if (!tutorialCompleted) {
       setTimeout(() => {
@@ -1420,7 +1309,6 @@ function checkSession() {
     }
   }
 }
-
 // Verificar si el usuario ya construyó
 async function checkIfUserHasBuilt() {
   const villagesRef = ref(db, 'villages');
@@ -1434,7 +1322,6 @@ async function checkIfUserHasBuilt() {
     });
   }
 }
-
 // Funciones de login/registro
 window.showLoginTab = function() {
   document.querySelectorAll('.tab-button')[0].classList.add('active');
@@ -1444,7 +1331,6 @@ window.showLoginTab = function() {
   loginError.style.display = 'none';
   registerError.style.display = 'none';
 }
-
 window.showRegisterTab = function() {
   document.querySelectorAll('.tab-button')[1].classList.add('active');
   document.querySelectorAll('.tab-button')[0].classList.remove('active');
@@ -1453,30 +1339,29 @@ window.showRegisterTab = function() {
   loginError.style.display = 'none';
   registerError.style.display = 'none';
 }
-
 window.handleLogin = async function() {
   const username = loginUsername.value.trim();
   const password = loginPassword.value;
-  
+ 
   if (!username || !password) {
     loginError.textContent = 'Por favor completa todos los campos';
     loginError.style.display = 'block';
     return;
   }
-  
+ 
   showLoading();
-  
+ 
   try {
     const userRef = ref(db, `accounts/${username}`);
     const snapshot = await get(userRef);
-    
+   
     if (!snapshot.exists()) {
       loginError.textContent = 'Usuario no encontrado';
       loginError.style.display = 'block';
       hideLoading();
       return;
     }
-    
+   
     const userData = snapshot.val();
     if (userData.password !== password) {
       loginError.textContent = 'Contraseña incorrecta';
@@ -1484,14 +1369,14 @@ window.handleLogin = async function() {
       hideLoading();
       return;
     }
-    
+   
     // Login exitoso
     userName = username;
     localStorage.setItem('currentUser', userName);
     loginModal.style.display = 'none';
     await checkIfUserHasBuilt();
     await loadAchievements();
-    
+   
     // Mostrar tutorial si es primera vez
     const tutorialCompleted = localStorage.getItem('tutorialCompleted');
     if (!tutorialCompleted) {
@@ -1499,7 +1384,7 @@ window.handleLogin = async function() {
         tutorialModal.style.display = 'flex';
       }, 500);
     }
-    
+   
     hideLoading();
   } catch (error) {
     console.error('Error en login:', error);
@@ -1508,63 +1393,62 @@ window.handleLogin = async function() {
     hideLoading();
   }
 }
-
 window.handleRegister = async function() {
   const username = registerUsername.value.trim();
   const password = registerPassword.value;
   const passwordConfirm = registerPasswordConfirm.value;
-  
+ 
   if (!username || !password || !passwordConfirm) {
     registerError.textContent = 'Por favor completa todos los campos';
     registerError.style.display = 'block';
     return;
   }
-  
+ 
   if (username.length < 3) {
     registerError.textContent = 'El nombre debe tener al menos 3 caracteres';
     registerError.style.display = 'block';
     return;
   }
-  
+ 
   if (password.length < 6) {
     registerError.textContent = 'La contraseña debe tener al menos 6 caracteres';
     registerError.style.display = 'block';
     return;
   }
-  
+ 
   if (password !== passwordConfirm) {
     registerError.textContent = 'Las contraseñas no coinciden';
     registerError.style.display = 'block';
     return;
   }
-  
+ 
   showLoading();
-  
+ 
   try {
     const userRef = ref(db, `accounts/${username}`);
     const snapshot = await get(userRef);
-    
+   
     if (snapshot.exists()) {
       registerError.textContent = 'Este nombre de usuario ya existe';
       registerError.style.display = 'block';
       hideLoading();
       return;
     }
-    
+   
     // Crear cuenta
     await set(ref(db, `accounts/${username}`), {
       password: password,
       createdAt: Date.now()
     });
-    
+   
     // Login automático
     userName = username;
     localStorage.setItem('currentUser', userName);
     loginModal.style.display = 'none';
     hideLoading();
-    
+   
     alert('¡Cuenta creada exitosamente!');
-    
+   
     // Mostrar tutorial para nuevos usuarios
     setTimeout(() => {
       tutorialModal.style.display = 'flex';
@@ -1576,46 +1460,42 @@ window.handleRegister = async function() {
     hideLoading();
   }
 }
-
 window.logout = function() {
   if (confirm('¿Seguro que quieres cerrar sesión?')) {
     localStorage.removeItem('currentUser');
     location.reload();
   }
 }
-
 // Modo Día/Noche
 window.toggleDayNight = function() {
   isNightMode = !isNightMode;
   document.body.classList.toggle('night-mode');
   dayNightToggle.textContent = isNightMode ? '☀️' : '🌙';
 }
-
 // Sistema de Logros
 async function loadAchievements() {
   if (!userName) return;
-  
+ 
   const achievementsRef = ref(db, `users/${userName}/achievements`);
   const snapshot = await get(achievementsRef);
-  
+ 
   if (snapshot.exists()) {
     achievements = snapshot.val();
   } else {
     achievements = {};
   }
 }
-
 async function unlockAchievement(achievementId) {
   if (!userName || achievements[achievementId]) return;
-  
+ 
   achievements[achievementId] = true;
   await set(ref(db, `users/${userName}/achievements/${achievementId}`), true);
-  
+ 
   const achievement = achievementDefinitions[achievementId];
   if (achievement) {
     // Mostrar notificación
     alert(`🏆 ¡Logro Desbloqueado!\n${achievement.name}\n${achievement.description}\nRecompensa: ${achievement.reward}`);
-    
+   
     // Dar recompensa
     if (achievement.reward.includes('XP')) {
       const xpAmount = parseInt(achievement.reward.match(/\d+/)[0]);
@@ -1623,54 +1503,57 @@ async function unlockAchievement(achievementId) {
     } else if (achievement.reward.includes('Oro')) {
       const goldAmount = parseInt(achievement.reward.match(/\d+/)[0]);
       currentGold += goldAmount;
-      await set(ref(db, `users/${userName}/resources`), { gold: currentGold });
+      await set(ref(db, `users/${userName}/resources`), { gold: currentGold, lastUpdate: Date.now() });
       updateResourcesDisplay();
     }
   }
 }
-
 async function checkAchievements() {
   if (!userName) return;
-  
+ 
   // Verificar logro de nivel 5
   if (userLevel >= 5 && !achievements.level5) {
     await unlockAchievement('level5');
   }
-  
+ 
   // Verificar logro de nivel 10
   if (userLevel >= 10 && !achievements.level10) {
     await unlockAchievement('level10');
   }
-  
+ 
   // Verificar logro de rico
   if (currentGold >= 500 && !achievements.rich) {
     await unlockAchievement('rich');
   }
-  
+ 
   // Verificar logro de millonario
   if (currentGold >= 1000 && !achievements.millionaire) {
     await unlockAchievement('millionaire');
   }
-  
+ 
   // Verificar logro de minas máximas
   if (goldMines.length >= 2 && !achievements.maxMines) {
     await unlockAchievement('maxMines');
   }
+ 
+  // Verificar logro del cohete
+  if (rockets.length >= 1 && !achievements.rocket) {
+    await unlockAchievement('rocket');
+  }
 }
-
 window.openAchievements = async function() {
   achievementsModal.style.display = 'flex';
   await loadAchievements();
-  
+ 
   achievementsList.innerHTML = '';
-  
+ 
   for (let key in achievementDefinitions) {
     const achievement = achievementDefinitions[key];
     const isUnlocked = achievements[achievement.id];
-    
+   
     const achievementItem = document.createElement('div');
     achievementItem.className = `achievement-item ${isUnlocked ? 'unlocked' : ''}`;
-    
+   
     achievementItem.innerHTML = `
       <div class="achievement-icon">${achievement.icon}</div>
       <div class="achievement-info">
@@ -1682,15 +1565,13 @@ window.openAchievements = async function() {
         ${isUnlocked ? '✅' : '🔒'}
       </div>
     `;
-    
+   
     achievementsList.appendChild(achievementItem);
   }
 }
-
 window.closeAchievements = function() {
   achievementsModal.style.display = 'none';
 }
-
 // Sistema de Tutorial
 window.nextTutorialStep = function() {
   if (currentTutorialStep < 6) {
@@ -1698,9 +1579,9 @@ window.nextTutorialStep = function() {
     currentTutorialStep++;
     document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.add('active');
     document.getElementById('tutorialCurrentStep').textContent = currentTutorialStep;
-    
+   
     document.getElementById('tutorialPrev').style.display = 'block';
-    
+   
     if (currentTutorialStep === 6) {
       document.getElementById('tutorialNext').textContent = '¡Empezar!';
     }
@@ -1711,41 +1592,39 @@ window.nextTutorialStep = function() {
     currentTutorialStep = 1;
   }
 }
-
 window.prevTutorialStep = function() {
   if (currentTutorialStep > 1) {
     document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.remove('active');
     currentTutorialStep--;
     document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.add('active');
     document.getElementById('tutorialCurrentStep').textContent = currentTutorialStep;
-    
+   
     if (currentTutorialStep === 1) {
       document.getElementById('tutorialPrev').style.display = 'none';
     }
-    
+   
     document.getElementById('tutorialNext').textContent = 'Siguiente →';
   }
 }
-
 // Funciones del Top de Jugadores
 window.openTopPlayers = async function() {
   showLoading();
   topPlayersModal.style.display = 'flex';
-  
+ 
   try {
     // Obtener todos los usuarios con nivel
     const usersRef = ref(db, 'users');
     const snapshot = await get(usersRef);
-    
+   
     if (!snapshot.exists()) {
       topPlayersList.innerHTML = '<div class="no-players-message">No hay jugadores todavía</div>';
       hideLoading();
       return;
     }
-    
+   
     const users = snapshot.val();
     const playersArray = [];
-    
+   
     // Convertir a array y calcular XP total
     for (let username in users) {
       if (users[username].level) {
@@ -1754,7 +1633,7 @@ window.openTopPlayers = async function() {
         const xp = levelData.xp || 0;
         // XP total = XP de niveles completados + XP actual
         const totalXP = ((level - 1) * level * 100 / 2) + xp;
-        
+       
         playersArray.push({
           username: username,
           level: level,
@@ -1763,25 +1642,25 @@ window.openTopPlayers = async function() {
         });
       }
     }
-    
+   
     // Ordenar por XP total
     playersArray.sort((a, b) => b.totalXP - a.totalXP);
-    
+   
     // Mostrar top 10
     topPlayersList.innerHTML = '';
     const top10 = playersArray.slice(0, 10);
-    
+   
     if (top10.length === 0) {
       topPlayersList.innerHTML = '<div class="no-players-message">No hay jugadores todavía</div>';
     } else {
       top10.forEach((player, index) => {
         const rank = index + 1;
         const rankClass = rank === 1 ? 'first' : rank === 2 ? 'second' : rank === 3 ? 'third' : '';
-        
+       
         const playerItem = document.createElement('div');
         playerItem.className = 'top-player-item';
         playerItem.onclick = () => visitPlayerVillage(player.username);
-        
+       
         playerItem.innerHTML = `
           <div class="top-player-rank ${rankClass}">${rank}</div>
           <div class="top-player-info">
@@ -1790,11 +1669,11 @@ window.openTopPlayers = async function() {
           </div>
           <div class="top-player-xp">${Math.floor(player.totalXP)} XP</div>
         `;
-        
+       
         topPlayersList.appendChild(playerItem);
       });
     }
-    
+   
     hideLoading();
   } catch (error) {
     console.error('Error cargando top jugadores:', error);
@@ -1802,24 +1681,22 @@ window.openTopPlayers = async function() {
     hideLoading();
   }
 }
-
 window.closeTopPlayers = function() {
   topPlayersModal.style.display = 'none';
 }
-
 async function visitPlayerVillage(username) {
   closeTopPlayers();
   showLoading();
-  
+ 
   try {
     // Buscar la aldea del jugador
     const villagesRef = ref(db, 'villages');
     const snapshot = await get(villagesRef);
-    
+   
     if (snapshot.exists()) {
       const villages = snapshot.val();
       let found = false;
-      
+     
       for (let key in villages) {
         if (villages[key].owner === username) {
           found = true;
@@ -1828,14 +1705,14 @@ async function visitPlayerVillage(username) {
           break;
         }
       }
-      
+     
       if (!found) {
         alert(`${username} aún no ha construido su aldea`);
       }
     } else {
       alert(`${username} aún no ha construido su aldea`);
     }
-    
+   
     hideLoading();
   } catch (error) {
     console.error('Error buscando aldea:', error);
@@ -1843,25 +1720,21 @@ async function visitPlayerVillage(username) {
     hideLoading();
   }
 }
-
 // Crear mapa con bordes
 let map = [];
 let cellElements = {};
-
 function showLoading() {
   loading.style.display = 'block';
 }
-
 function hideLoading() {
   loading.style.display = 'none';
 }
-
 // Crear el grid del mapa
 for (let r = 0; r < rows; r++) {
   map[r] = [];
   for (let c = 0; c < cols; c++) {
     let terrain;
-    
+   
     if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) {
       terrain = 'wall';
     }
@@ -1874,20 +1747,19 @@ for (let r = 0; r < rows; r++) {
     else {
       terrain = 'grass';
     }
-    
+   
     map[r][c] = { terrain, building: null, owner: null };
-    
+   
     const cell = document.createElement('div');
     cell.classList.add('cell', terrain);
     cell.dataset.row = r;
     cell.dataset.col = c;
     cell.addEventListener('click', () => handleCellClick(cell));
-    
+   
     cellElements[`${r}-${c}`] = cell;
     mapEl.appendChild(cell);
   }
 }
-
 // Cargar aldeas desde Firebase
 showLoading();
 const villagesRef = ref(db, 'villages');
@@ -1899,16 +1771,16 @@ onValue(villagesRef, (snapshot) => {
       const r = village.row;
       const c = village.col;
       const owner = village.owner;
-      
+     
       if (map[r] && map[r][c]) {
         map[r][c].building = 'house';
         map[r][c].owner = owner;
-        
+       
         const cell = cellElements[`${r}-${c}`];
         if (cell) {
           cell.classList.add('building');
           cell.textContent = '🏰';
-          
+         
           const nameLabel = document.createElement('div');
           nameLabel.className = 'owner-name';
           nameLabel.textContent = owner;
@@ -1919,21 +1791,35 @@ onValue(villagesRef, (snapshot) => {
   }
   hideLoading();
 });
-
 // Cargar recursos del usuario cuando entra a su isla
 async function loadUserResources(owner) {
+  if (owner !== userName) {
+    const snapshot = await get(ref(db, `users/${owner}/resources`));
+    currentGold = snapshot.exists() ? snapshot.val().gold || 0 : 0;
+    updateResourcesDisplay();
+    return;
+  }
+
   const userResourcesRef = ref(db, `users/${owner}/resources`);
   const snapshot = await get(userResourcesRef);
-  if (snapshot.exists()) {
-    const resources = snapshot.val();
-    currentGold = resources.gold || 0;
-  } else {
-    currentGold = 100; // Oro inicial
-    await set(ref(db, `users/${owner}/resources`), { gold: currentGold });
+  let resources = snapshot.exists() ? snapshot.val() : {gold: 100, lastUpdate: Date.now()};
+  currentGold = resources.gold || 100;
+  let lastUpdate = resources.lastUpdate || Date.now();
+  let now = Date.now();
+  let deltaMs = now - lastUpdate;
+  let intervalsPassed = Math.floor(deltaMs / 5000);
+
+  if (goldMines.length > 0 && intervalsPassed > 0) {
+    let accumGold = intervalsPassed * 10 * goldMines.length;
+    currentGold += accumGold;
+    await addXP(intervalsPassed);
+    await checkAchievements();
   }
+
+  firstTickDelay = 5000 - (deltaMs % 5000);
+  await set(ref(db, `users/${owner}/resources`), { gold: currentGold, lastUpdate: now });
   updateResourcesDisplay();
 }
-
 // Cargar nivel y XP del usuario
 async function loadUserLevel(owner) {
   const userLevelRef = ref(db, `users/${owner}/level`);
@@ -1951,23 +1837,22 @@ async function loadUserLevel(owner) {
   }
   updateLevelDisplay();
 }
-
 // Cargar edificios de la isla
 async function loadIslandBuildings(owner) {
   const buildingsRef = ref(db, `users/${owner}/buildings`);
   const snapshot = await get(buildingsRef);
   goldMines = [];
+  rockets = [];
   if (snapshot.exists()) {
     const buildings = snapshot.val();
     goldMines = buildings.goldMines || [];
+    rockets = buildings.rockets || [];
   }
   updateShopUI();
 }
-
 function updateResourcesDisplay() {
   goldAmountEl.textContent = currentGold;
 }
-
 function updateLevelDisplay() {
   userNameEl.textContent = currentVillageOwner;
   userLevelEl.textContent = userLevel;
@@ -1975,9 +1860,10 @@ function updateLevelDisplay() {
   xpBar.style.width = xpPercent + '%';
   xpBarText.textContent = `${userXP} / ${xpNeeded} XP`;
 }
-
 function updateShopUI() {
   mineCountEl.textContent = goldMines.length;
+  rocketCountEl.textContent = rockets.length;
+ 
   if (goldMines.length >= 2) {
     buyMineBtn.disabled = true;
     buyMineBtn.textContent = 'Máximo alcanzado';
@@ -1985,11 +1871,18 @@ function updateShopUI() {
     buyMineBtn.disabled = false;
     buyMineBtn.textContent = 'Comprar';
   }
+ 
+  if (rockets.length >= 1) {
+    buyRocketBtn.disabled = true;
+    buyRocketBtn.textContent = 'Máximo alcanzado';
+  } else {
+    buyRocketBtn.disabled = false;
+    buyRocketBtn.textContent = 'Comprar';
+  }
 }
-
 async function addXP(amount) {
   userXP += amount;
-  
+ 
   // Verificar si subió de nivel
   while (userXP >= xpNeeded) {
     userXP -= xpNeeded;
@@ -1997,43 +1890,41 @@ async function addXP(amount) {
     xpNeeded = userLevel * 100;
     alert(`¡Felicidades! Subiste al nivel ${userLevel}`);
   }
-  
+ 
   await set(ref(db, `users/${currentVillageOwner}/level`), { level: userLevel, xp: userXP });
   updateLevelDisplay();
 }
-
 async function handleCellClick(cell) {
   if (hasDragged) return;
-  
+ 
   const r = cell.dataset.row;
   const c = cell.dataset.col;
-  
+ 
   if (map[r][c].building === 'house') {
     openIsland(map[r][c].owner);
     return;
   }
-  
+ 
   build(cell);
 }
-
 async function build(cell) {
   const r = parseInt(cell.dataset.row);
   const c = parseInt(cell.dataset.col);
-  
+ 
   if (userHasBuilt) {
     alert('Ya has colocado tu aldea. Solo puedes construir una aldea.');
     return;
   }
-  
+ 
   if (map[r][c].terrain !== 'grass' || map[r][c].building) return;
-  
+ 
   if (!userName) {
     alert('Error: No has iniciado sesión');
     return;
   }
-  
+ 
   showLoading();
-  
+ 
   try {
     // Guardar en Firebase
     const villageId = `${r}-${c}`;
@@ -2043,52 +1934,54 @@ async function build(cell) {
       owner: userName,
       timestamp: Date.now()
     });
-    
+   
     map[r][c].building = 'house';
     map[r][c].owner = userName;
     cell.classList.add('building');
     cell.textContent = '🏰';
-    
+   
     const nameLabel = document.createElement('div');
     nameLabel.className = 'owner-name';
     nameLabel.textContent = userName;
     cell.appendChild(nameLabel);
-    
+   
     userHasBuilt = true;
-    
+   
     // Desbloquear logro de primera aldea
     await unlockAchievement('firstVillage');
   } catch (error) {
     console.error('Error guardando aldea:', error);
     alert('Error al guardar la aldea. Intenta de nuevo.');
   }
-  
+ 
   hideLoading();
 }
-
-function openIsland(owner) {
+async function openIsland(owner) {
   currentVillageOwner = owner;
   ownerNameSpan.textContent = owner;
-  
+ 
   // Verificar si está visitando la aldea de otro jugador
   if (owner !== userName && userName) {
     unlockAchievement('explorer');
   }
-  
-  // Cargar recursos, nivel y edificios
-  loadUserResources(owner);
-  loadUserLevel(owner);
-  loadIslandBuildings(owner);
-  
+ 
+  // Cargar edificios, recursos, nivel
+  await loadIslandBuildings(owner);
+  await loadUserResources(owner);
+  await loadUserLevel(owner);
+  if (owner === userName && goldMines.length > 0) {
+    startGoldGeneration();
+  }
+ 
   islandContainer.innerHTML = '';
-  
+ 
   for (let r = 0; r < 20; r++) {
     for (let c = 0; c < 20; c++) {
       const islandCell = document.createElement('div');
       islandCell.classList.add('island-cell');
       islandCell.dataset.row = r;
       islandCell.dataset.col = c;
-      
+     
       if (r === 10 && c === 10) {
         islandCell.classList.add('center');
         islandCell.textContent = '🏰';
@@ -2098,11 +1991,11 @@ function openIsland(owner) {
           islandCell.addEventListener('click', () => handleIslandCellClick(islandCell));
         }
       }
-      
+     
       islandContainer.appendChild(islandCell);
     }
   }
-  
+ 
   // Cargar minas de oro existentes
   setTimeout(() => {
     goldMines.forEach(mine => {
@@ -2112,14 +2005,23 @@ function openIsland(owner) {
         cell.textContent = '⛏️';
       }
     });
+   
+    // Cargar cohetes existentes
+    rockets.forEach(rocket => {
+      const cell = islandContainer.querySelector(`[data-row="${rocket.row}"][data-col="${rocket.col}"]`);
+      if (cell) {
+        cell.classList.add('rocket');
+        cell.textContent = '🚀';
+      }
+    });
   }, 100);
-  
+ 
   islandTranslateX = 0;
   islandTranslateY = 0;
   islandScale = 1;
-  
+ 
   fade.style.opacity = 1;
-  
+ 
   setTimeout(() => {
     mainMap.style.opacity = 0;
     islandView.style.opacity = 1;
@@ -2130,148 +2032,212 @@ function openIsland(owner) {
     islandAchievementsButton.style.pointerEvents = 'auto';
     resourcesPanel.style.display = 'block';
     userInfoPanel.style.display = 'block';
-    
+   
     // Mostrar botón de tienda solo si es tu isla
     if (owner === userName) {
       shopButton.style.display = 'block';
     }
-    
+   
     setTimeout(() => {
       islandTranslateX = (islandViewport.clientWidth - islandContainer.offsetWidth) / 2;
       islandTranslateY = (islandViewport.clientHeight - islandContainer.offsetHeight) / 2;
       updateIslandTransform();
     }, 50);
   }, 400);
-  
+ 
   setTimeout(() => {
     fade.style.opacity = 0;
   }, 900);
 }
-
 async function handleIslandCellClick(cell) {
   if (islandHasDragged) return;
-  
+ 
+  const r = parseInt(cell.dataset.row);
+  const c = parseInt(cell.dataset.col);
+ 
+  // No construir en el centro
+  if (r === 10 && c === 10) {
+    alert('No puedes construir en el castillo');
+    return;
+  }
+ 
+  // Verificar si ya hay algo construido
+  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket')) {
+    alert('Ya hay una estructura aquí');
+    return;
+  }
+ 
   // Si está en modo de colocar mina desde la tienda
   if (isPlacingMine) {
-    const r = parseInt(cell.dataset.row);
-    const c = parseInt(cell.dataset.col);
-    
-    // No construir en el centro
-    if (r === 10 && c === 10) {
-      alert('No puedes construir en el castillo');
-      return;
-    }
-    
-    // Verificar si ya hay algo construido
-    if (cell.classList.contains('gold-mine')) {
-      alert('Ya hay una mina aquí');
-      return;
-    }
-    
     showLoading();
-    
+   
     try {
       // Guardar mina
       goldMines.push({ row: r, col: c });
-      await set(ref(db, `users/${currentVillageOwner}/buildings`), { goldMines });
-      
+      await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+        goldMines,
+        rockets
+      });
+     
       // Actualizar visualmente
       cell.classList.add('gold-mine');
       cell.textContent = '⛏️';
-      
+     
       // Dar XP por construir
       await addXP(25);
-      
+     
       isPlacingMine = false;
       updateShopUI();
-      
+     
       // Iniciar generación de oro
       startGoldGeneration();
-      
+     
       // Verificar logro de primera mina
       if (goldMines.length === 1) {
         await unlockAchievement('firstMine');
       }
-      
+     
       alert('¡Mina construida! +25 XP');
     } catch (error) {
       console.error('Error construyendo mina:', error);
       alert('Error al construir la mina.');
     }
-    
+   
+    hideLoading();
+  }
+ 
+  // Si está en modo de colocar cohete desde la tienda
+  else if (isPlacingRocket) {
+    showLoading();
+   
+    try {
+      // Guardar cohete
+      rockets.push({ row: r, col: c });
+      await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+        goldMines,
+        rockets
+      });
+     
+      // Actualizar visualmente
+      cell.classList.add('rocket');
+      cell.textContent = '🚀';
+     
+      // Dar XP por construir
+      await addXP(100);
+     
+      isPlacingRocket = false;
+      updateShopUI();
+     
+      // Verificar logro del cohete
+      if (rockets.length === 1) {
+        await unlockAchievement('rocket');
+      }
+     
+      alert('¡Cohete construido! +100 XP');
+    } catch (error) {
+      console.error('Error construyendo cohete:', error);
+      alert('Error al construir el cohete.');
+    }
+   
     hideLoading();
   }
 }
-
 // Funciones de la tienda
 window.openShop = function() {
   shopModal.style.display = 'flex';
   updateShopUI();
 }
-
 window.closeShop = function() {
   shopModal.style.display = 'none';
 }
-
 window.buyMine = async function() {
   // Verificar límite
   if (goldMines.length >= 2) {
     alert('Ya tienes el máximo de minas (2)');
     return;
   }
-  
+ 
   // Verificar oro
   const mineCost = 50;
   if (currentGold < mineCost) {
     alert(`Necesitas ${mineCost} de oro. Tienes ${currentGold}.`);
     return;
   }
-  
+ 
   // Descontar oro
   currentGold -= mineCost;
-  await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold });
+  await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold, lastUpdate: Date.now() });
   updateResourcesDisplay();
-  
+ 
   // Activar modo de colocación
   isPlacingMine = true;
+  isPlacingRocket = false;
   closeShop();
   alert('Haz click en una celda verde para colocar la mina');
 }
-
+window.buyRocket = async function() {
+  // Verificar límite
+  if (rockets.length >= 1) {
+    alert('Ya tienes el máximo de cohetes (1)');
+    return;
+  }
+ 
+  // Verificar oro
+  const rocketCost = 2000;
+  if (currentGold < rocketCost) {
+    alert(`Necesitas ${rocketCost} de oro. Tienes ${currentGold}.`);
+    return;
+  }
+ 
+  // Descontar oro
+  currentGold -= rocketCost;
+  await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold, lastUpdate: Date.now() });
+  updateResourcesDisplay();
+ 
+  // Activar modo de colocación
+  isPlacingRocket = true;
+  isPlacingMine = false;
+  closeShop();
+  alert('Haz click en una celda verde para colocar el cohete');
+}
 // Generar oro cada 5 segundos
 let goldInterval = null;
 function startGoldGeneration() {
   if (goldInterval) return;
-  
-  goldInterval = setInterval(async () => {
-    if (currentVillageOwner === userName && goldMines.length > 0) {
-      const goldPerMine = 10;
-      const totalGold = goldMines.length * goldPerMine;
-      currentGold += totalGold;
-      
-      await set(ref(db, `users/${userName}/resources`), { gold: currentGold });
-      updateResourcesDisplay();
-      
-      // Ganar 1 XP por cada generación
-      await addXP(1);
-      
-      // Verificar logros relacionados con oro
-      await checkAchievements();
-    }
-  }, 5000); // Cada 5 segundos
-}
 
+  setTimeout(async () => {
+    if (currentVillageOwner === userName && goldMines.length > 0) {
+      currentGold += 10 * goldMines.length;
+      await addXP(1);
+      await checkAchievements();
+      updateResourcesDisplay();
+      await set(ref(db, `users/${userName}/resources`), {gold: currentGold, lastUpdate: Date.now() });
+    }
+
+    goldInterval = setInterval(async () => {
+      if (currentVillageOwner === userName && goldMines.length > 0) {
+        currentGold += 10 * goldMines.length;
+        await addXP(1);
+        await checkAchievements();
+        updateResourcesDisplay();
+        await set(ref(db, `users/${userName}/resources`), {gold: currentGold, lastUpdate: Date.now() });
+      }
+    }, 5000);
+
+  }, firstTickDelay);
+}
 function backToMap() {
   fade.style.opacity = 1;
-  
+ 
   // Detener generación de oro
   if (goldInterval) {
     clearInterval(goldInterval);
     goldInterval = null;
   }
-  
+ 
   isPlacingMine = false;
-  
+  isPlacingRocket = false;
+ 
   setTimeout(() => {
     islandView.style.opacity = 0;
     islandView.style.pointerEvents = 'none';
@@ -2284,12 +2250,11 @@ function backToMap() {
     shopButton.style.display = 'none';
     mainMap.style.opacity = 1;
   }, 400);
-  
+ 
   setTimeout(() => {
     fade.style.opacity = 0;
   }, 900);
 }
-
 window.toggleGrid = function() {
   gridVisible = !gridVisible;
   if (gridVisible) {
@@ -2300,7 +2265,6 @@ window.toggleGrid = function() {
     gridToggleBtn.textContent = 'Mostrar Cuadrícula';
   }
 }
-
 window.toggleIslandGrid = function() {
   islandGridVisible = !islandGridVisible;
   if (islandGridVisible) {
@@ -2311,9 +2275,7 @@ window.toggleIslandGrid = function() {
     islandGridToggleBtn.textContent = 'Mostrar Cuadrícula';
   }
 }
-
 window.backToMap = backToMap;
-
 // Variables de estado para drag del mapa principal
 let isDragging = false;
 let hasDragged = false;
@@ -2321,15 +2283,12 @@ let startX, startY;
 let translateX = 0;
 let translateY = 0;
 let scale = 1;
-
 function updateTransform() {
   world.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
 }
-
 function updateIslandTransform() {
   islandWorld.style.transform = `translate(${islandTranslateX}px, ${islandTranslateY}px) scale(${islandScale})`;
 }
-
 // === Controles del mapa principal ===
 viewport.addEventListener('mousedown', e => {
   if (e.target === viewport || e.target === world || e.target.classList.contains('cell')) {
@@ -2340,56 +2299,51 @@ viewport.addEventListener('mousedown', e => {
     viewport.style.cursor = 'grabbing';
   }
 });
-
 viewport.addEventListener('mouseup', () => {
   isDragging = false;
   viewport.style.cursor = 'grab';
 });
-
 viewport.addEventListener('mouseleave', () => {
   isDragging = false;
   viewport.style.cursor = 'grab';
 });
-
 viewport.addEventListener('mousemove', e => {
   if (!isDragging) return;
   e.preventDefault();
-  
+ 
   const deltaX = Math.abs(e.clientX - startX - translateX);
   const deltaY = Math.abs(e.clientY - startY - translateY);
-  
+ 
   if (deltaX > 3 || deltaY > 3) {
     hasDragged = true;
   }
-  
+ 
   translateX = e.clientX - startX;
   translateY = e.clientY - startY;
   updateTransform();
 });
-
 viewport.addEventListener('wheel', e => {
   e.preventDefault();
-  
+ 
   const rect = viewport.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
-  
+ 
   const beforeX = (mouseX - translateX) / scale;
   const beforeY = (mouseY - translateY) / scale;
-  
+ 
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
   const newScale = Math.min(Math.max(scale + delta, 0.3), 3);
-  
+ 
   const afterX = (mouseX - translateX) / newScale;
   const afterY = (mouseY - translateY) / newScale;
-  
+ 
   translateX += (afterX - beforeX) * newScale;
   translateY += (afterY - beforeY) * newScale;
-  
+ 
   scale = newScale;
   updateTransform();
 });
-
 // === Controles de la isla ===
 islandViewport.addEventListener('mousedown', e => {
   if (e.target === islandViewport || e.target === islandWorld || e.target.classList.contains('island-cell')) {
@@ -2400,63 +2354,57 @@ islandViewport.addEventListener('mousedown', e => {
     islandViewport.style.cursor = 'grabbing';
   }
 });
-
 islandViewport.addEventListener('mouseup', () => {
   islandDragging = false;
   islandViewport.style.cursor = 'grab';
 });
-
 islandViewport.addEventListener('mouseleave', () => {
   islandDragging = false;
   islandViewport.style.cursor = 'grab';
 });
-
 islandViewport.addEventListener('mousemove', e => {
   if (!islandDragging) return;
   e.preventDefault();
-  
+ 
   const deltaX = Math.abs(e.clientX - islandStartX - islandTranslateX);
   const deltaY = Math.abs(e.clientY - islandStartY - islandTranslateY);
-  
+ 
   if (deltaX > 3 || deltaY > 3) {
     islandHasDragged = true;
   }
-  
+ 
   islandTranslateX = e.clientX - islandStartX;
   islandTranslateY = e.clientY - islandStartY;
   updateIslandTransform();
 });
-
 islandViewport.addEventListener('wheel', e => {
   e.preventDefault();
-  
+ 
   const rect = islandViewport.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
-  
+ 
   const beforeX = (mouseX - islandTranslateX) / islandScale;
   const beforeY = (mouseY - islandTranslateY) / islandScale;
-  
+ 
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
   const newScale = Math.min(Math.max(islandScale + delta, 0.3), 3);
-  
+ 
   const afterX = (mouseX - islandTranslateX) / newScale;
   const afterY = (mouseY - islandTranslateY) / newScale;
-  
+ 
   islandTranslateX += (afterX - beforeX) * newScale;
   islandTranslateY += (afterY - beforeY) * newScale;
-  
+ 
   islandScale = newScale;
   updateIslandTransform();
 });
-
 window.addEventListener('load', () => {
   translateX = (viewport.clientWidth - mapEl.offsetWidth) / 2;
   translateY = (viewport.clientHeight - mapEl.offsetHeight) / 2;
   updateTransform();
   checkSession();
 });
-
 updateTransform();
 </script>
 </body>
