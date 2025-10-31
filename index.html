@@ -382,6 +382,26 @@ body.night-mode .island-cell.statue {
 #inventoryButton:hover {
   transform: scale(1.05);
 }
+#attackButton {
+  position: fixed;
+  bottom: 140px;
+  right: 20px;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #ff0000 0%, #8b0000 100%);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+  display: none;
+}
+#attackButton:hover {
+  transform: scale(1.05);
+}
 #shopModal {
   position: fixed;
   top: 0;
@@ -691,7 +711,7 @@ body.night-mode .island-cell.statue {
 }
 #achievementsButton {
   position: fixed;
-  top: 170px;
+  bottom: 140px;
   right: 20px;
   padding: 12px 20px;
   background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
@@ -1109,6 +1129,7 @@ body.night-mode .island-cell.statue {
   </div>
   <button id="shopButton" onclick="openShop()">🛒 Tienda</button>
   <button id="inventoryButton" onclick="openInventory()">🎒 Inventario</button>
+  <button id="attackButton" onclick="attackVillage()">⚔️ Atacar</button>
   <div id="islandViewport">
     <div id="islandWorld">
       <div id="islandContainer"></div>
@@ -1296,7 +1317,7 @@ body.night-mode .island-cell.statue {
 </div>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
 const firebaseConfig = {
   apiKey: "AIzaSyClTAw_XLfH3UcCKTisTREZchz41tTxL7g",
   authDomain: "projectmap-382dd.firebaseapp.com",
@@ -1334,6 +1355,7 @@ const xpBar = document.getElementById('xpBar');
 const xpBarText = document.getElementById('xpBarText');
 const shopButton = document.getElementById('shopButton');
 const inventoryButton = document.getElementById('inventoryButton');
+const attackButton = document.getElementById('attackButton');
 const shopModal = document.getElementById('shopModal');
 const mineCountEl = document.getElementById('mineCount');
 const buyMineBtn = document.getElementById('buyMineBtn');
@@ -1643,7 +1665,7 @@ async function unlockAchievement(achievementId) {
     // Dar recompensa
     if (achievement.reward.includes('XP')) {
       const xpAmount = parseInt(achievement.reward.match(/\d+/)[0]);
-      await addXP(xpAmount);
+      await addXP(userName, xpAmount);
     } else if (achievement.reward.includes('Oro')) {
       const goldAmount = parseInt(achievement.reward.match(/\d+/)[0]);
       currentGold += goldAmount;
@@ -1863,8 +1885,8 @@ window.openGlobalShop = async function() {
   globalShopModal.style.display = 'flex';
   const globalShopRef = ref(db, 'globalShop/statue');
   const snapshot = await get(globalShopRef);
-  const sold = snapshot.exists() ? snapshot.val().sold : false;
-  if (sold) {
+  const stock = snapshot.exists() ? snapshot.val().stock : 0;
+  if (stock <= 0) {
     buyStatueBtn.disabled = true;
     buyStatueBtn.textContent = 'Agotado';
   } else {
@@ -1904,14 +1926,19 @@ window.buyStatue = async function() {
       return;
     }
     const globalShopRef = ref(db, 'globalShop/statue');
-    const snapshot = await get(globalShopRef);
-    const sold = snapshot.exists() ? snapshot.val().sold : false;
-    if (sold) {
-      alert('Ya se agotó');
+    const transactionResult = await runTransaction(globalShopRef, (currentData) => {
+      if (currentData && currentData.stock > 0) {
+        currentData.stock -= 1;
+        return currentData;
+      } else {
+        return undefined; // Abort transaction
+      }
+    });
+    if (!transactionResult.committed) {
+      alert('La estatua se agotó');
       hideLoading();
       return;
     }
-    await set(globalShopRef, {sold: true, buyer: userName, timestamp: Date.now()});
     gold -= cost;
     await set(ref(db, `users/${userName}/resources`), {gold: gold, lastUpdate: Date.now()});
     const inventoryRef = ref(db, `users/${userName}/inventory/items`);
@@ -1966,6 +1993,45 @@ window.placeFromInventory = function(index) {
 }
 window.closeInventory = function() {
   inventoryModal.style.display = 'none';
+}
+// Funcion de ataque
+window.attackVillage = async function() {
+  if(!confirm('¿Atacar esta aldea? Costo: 100 oro. Robarás hasta 50 oro.')) return;
+  showLoading();
+  try {
+    const attacker = userName;
+    const victim = currentVillageOwner;
+    const attackerResourcesRef = ref(db, `users/${attacker}/resources`);
+    const victimResourcesRef = ref(db, `users/${victim}/resources`);
+    const attackerSnap = await get(attackerResourcesRef);
+    let attackerGold = attackerSnap.exists() ? attackerSnap.val().gold : 0;
+    if(attackerGold < 100) {
+      alert('No tienes suficiente oro para atacar.');
+      hideLoading();
+      return;
+    }
+    const victimSnap = await get(victimResourcesRef);
+    let victimGold = victimSnap.exists() ? victimSnap.val().gold : 0;
+    let stealAmount = Math.min(50, Math.floor(victimGold * 0.1));
+    if(stealAmount <= 0) {
+      alert('No hay suficiente oro para robar en esta aldea.');
+      hideLoading();
+      return;
+    }
+    attackerGold -= 100;
+    attackerGold += stealAmount;
+    victimGold -= stealAmount;
+    await set(attackerResourcesRef, {gold: attackerGold, lastUpdate: Date.now()});
+    await set(victimResourcesRef, {gold: victimGold, lastUpdate: Date.now()});
+    await addXP(attacker, 20);
+    currentGold = victimGold;
+    updateResourcesDisplay();
+    alert(`¡Ataque exitoso! Robaste ${stealAmount} oro. +20 XP`);
+  } catch(error) {
+    console.error('Error en ataque:', error);
+    alert('Error al realizar el ataque.');
+  }
+  hideLoading();
 }
 // Crear mapa con bordes
 let map = [];
@@ -2057,7 +2123,7 @@ async function loadUserResources(owner) {
   if (goldMines.length > 0 && intervalsPassed > 0) {
     let accumGold = intervalsPassed * 10 * goldMines.length;
     currentGold += accumGold;
-    await addXP(intervalsPassed);
+    await addXP(userName, intervalsPassed);
     await checkAchievements();
   }
   firstTickDelay = 5000 - (deltaMs % 5000);
@@ -2077,7 +2143,9 @@ async function loadUserLevel(owner) {
     userLevel = 1;
     userXP = 0;
     xpNeeded = 100;
-    await set(ref(db, `users/${owner}/level`), { level: userLevel, xp: userXP });
+    if (owner === userName) {
+      await set(userLevelRef, { level: userLevel, xp: userXP });
+    }
   }
   updateLevelDisplay();
 }
@@ -2124,17 +2192,35 @@ function updateShopUI() {
     buyRocketBtn.textContent = 'Comprar';
   }
 }
-async function addXP(amount) {
-  userXP += amount;
-  // Verificar si subió de nivel
-  while (userXP >= xpNeeded) {
-    userXP -= xpNeeded;
-    userLevel++;
-    xpNeeded = userLevel * 100;
-    alert(`¡Felicidades! Subiste al nivel ${userLevel}`);
+async function addXP(owner, amount) {
+  const levelRef = ref(db, `users/${owner}/level`);
+  const snapshot = await get(levelRef);
+  let level = 1;
+  let xp = 0;
+  let needed = 100;
+  if (snapshot.exists()) {
+    const levelData = snapshot.val();
+    level = levelData.level || 1;
+    xp = levelData.xp || 0;
+    needed = level * 100;
   }
-  await set(ref(db, `users/${currentVillageOwner}/level`), { level: userLevel, xp: userXP });
-  updateLevelDisplay();
+  xp += amount;
+  while (xp >= needed && level < 20) {
+    xp -= needed;
+    level++;
+    needed = level * 100;
+    alert(`¡Felicidades! ${owner} subió al nivel ${level}`);
+  }
+  if (level >= 20) {
+    xp = Math.min(xp, needed - 1);
+  }
+  await set(levelRef, { level: level, xp: xp });
+  if (owner === currentVillageOwner) {
+    userLevel = level;
+    userXP = xp;
+    xpNeeded = needed;
+    updateLevelDisplay();
+  }
 }
 async function handleCellClick(cell) {
   if (hasDragged) return;
@@ -2272,6 +2358,7 @@ async function openIsland(owner) {
       shopButton.style.display = 'block';
       inventoryButton.style.display = 'block';
     }
+    attackButton.style.display = (owner !== userName && userName) ? 'block' : 'none';
  
     setTimeout(() => {
       islandTranslateX = (islandViewport.clientWidth - islandContainer.offsetWidth) / 2;
@@ -2315,7 +2402,7 @@ async function handleIslandCellClick(cell) {
       cell.textContent = '⛏️';
    
       // Dar XP por construir
-      await addXP(25);
+      await addXP(currentVillageOwner, 25);
    
       placingItem = null;
       updateShopUI();
@@ -2353,7 +2440,7 @@ async function handleIslandCellClick(cell) {
       cell.textContent = '🚀';
    
       // Dar XP por construir
-      await addXP(100);
+      await addXP(currentVillageOwner, 100);
    
       placingItem = null;
       updateShopUI();
@@ -2388,7 +2475,7 @@ async function handleIslandCellClick(cell) {
       cell.textContent = '🗿';
    
       // Dar XP por colocar
-      await addXP(50);
+      await addXP(currentVillageOwner, 50);
    
       // Remover del inventario
       const inventoryRef = ref(db, `users/${userName}/inventory/items`);
@@ -2466,7 +2553,7 @@ function startGoldGeneration() {
   setTimeout(async () => {
     if (currentVillageOwner === userName && goldMines.length > 0) {
       currentGold += 10 * goldMines.length;
-      await addXP(1);
+      await addXP(userName, 1);
       await checkAchievements();
       updateResourcesDisplay();
       await set(ref(db, `users/${userName}/resources`), {gold: currentGold, lastUpdate: Date.now() });
@@ -2474,7 +2561,7 @@ function startGoldGeneration() {
     goldInterval = setInterval(async () => {
       if (currentVillageOwner === userName && goldMines.length > 0) {
         currentGold += 10 * goldMines.length;
-        await addXP(1);
+        await addXP(userName, 1);
         await checkAchievements();
         updateResourcesDisplay();
         await set(ref(db, `users/${userName}/resources`), {gold: currentGold, lastUpdate: Date.now() });
@@ -2501,6 +2588,7 @@ function backToMap() {
     userInfoPanel.style.display = 'none';
     shopButton.style.display = 'none';
     inventoryButton.style.display = 'none';
+    attackButton.style.display = 'none';
     mainMap.style.opacity = 1;
   }, 400);
   setTimeout(() => {
