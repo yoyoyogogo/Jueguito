@@ -239,6 +239,13 @@ body.night-mode .island-cell.gold-mine {
 body.night-mode .island-cell.rocket {
   background-color: #444;
 }
+.island-cell.statue {
+  background-color: #808080;
+  color: white;
+}
+body.night-mode .island-cell.statue {
+  background-color: #404040;
+}
 .island-cell.building-hover:hover {
   background-color: rgba(255, 215, 0, 0.5);
   cursor: pointer;
@@ -355,6 +362,26 @@ body.night-mode .island-cell.rocket {
 #shopButton:hover {
   transform: scale(1.05);
 }
+#inventoryButton {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+  display: none;
+}
+#inventoryButton:hover {
+  transform: scale(1.05);
+}
 #shopModal {
   position: fixed;
   top: 0;
@@ -439,6 +466,47 @@ body.night-mode .island-cell.rocket {
   font-size: 16px;
 }
 #closeShop:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+#inventoryModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+#inventoryContent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+#inventoryContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 28px;
+}
+#closeInventory {
+  display: block;
+  margin: 20px auto 0;
+  padding: 12px 30px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+}
+#closeInventory:hover {
   background: rgba(255, 255, 255, 0.3);
 }
 #islandGridToggle {
@@ -680,6 +748,25 @@ body.night-mode .island-cell.rocket {
   transition: transform 0.3s;
 }
 #topPlayersButton:hover {
+  transform: scale(1.05);
+}
+#globalShopButton {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #89ff00 0%, #00bcd4 100%);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+}
+#globalShopButton:hover {
   transform: scale(1.05);
 }
 #topPlayersModal {
@@ -944,6 +1031,48 @@ body.night-mode .island-cell.rocket {
   margin-top: 20px;
   font-size: 14px;
 }
+/* === Global Shop Modal === */
+#globalShopModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+#globalShopContent {
+  background: linear-gradient(135deg, #89ff00 0%, #00bcd4 100%);
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+#globalShopContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 28px;
+}
+#closeGlobalShop {
+  display: block;
+  margin: 20px auto 0;
+  padding: 12px 30px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+}
+#closeGlobalShop:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
 </style>
 </head>
 <body>
@@ -958,6 +1087,7 @@ body.night-mode .island-cell.rocket {
   <button id="logoutButton" onclick="logout()">Cerrar Sesión</button>
   <button id="dayNightToggle" onclick="toggleDayNight()">🌙</button>
   <button id="achievementsButton" onclick="openAchievements()">🏆 Logros</button>
+  <button id="globalShopButton" onclick="openGlobalShop()">🌐 Tienda Global</button>
   <button id="topPlayersButton" onclick="openTopPlayers()">🏆 Top Jugadores</button>
 </div>
 <!-- Vista de isla -->
@@ -966,7 +1096,6 @@ body.night-mode .island-cell.rocket {
   <button id="islandGridToggle" onclick="toggleIslandGrid()">Quitar Cuadrícula</button>
   <button id="islandAchievementsButton" onclick="openAchievements()">🏆 Logros</button>
   <div id="islandTitle">Aldea de <span id="ownerName"></span></div>
- 
   <div id="userInfoPanel">
     <h3 id="userName"></h3>
     <div id="levelInfo">Nivel: <span id="userLevel">1</span></div>
@@ -975,13 +1104,11 @@ body.night-mode .island-cell.rocket {
       <div id="xpBarText">0 / 100 XP</div>
     </div>
   </div>
- 
   <div id="resourcesPanel">
     💰<span id="goldAmount">0</span>
   </div>
- 
   <button id="shopButton" onclick="openShop()">🛒 Tienda</button>
- 
+  <button id="inventoryButton" onclick="openInventory()">🎒 Inventario</button>
   <div id="islandViewport">
     <div id="islandWorld">
       <div id="islandContainer"></div>
@@ -992,7 +1119,7 @@ body.night-mode .island-cell.rocket {
 <div id="shopModal">
   <div id="shopContent">
     <h2>🛒 Tienda</h2>
-   
+ 
     <div class="shop-item">
       <div class="shop-item-info">
         <div class="shop-item-name">⛏️ Mina de Oro</div>
@@ -1002,7 +1129,7 @@ body.night-mode .island-cell.rocket {
       </div>
       <button id="buyMineBtn" onclick="buyMine()">Comprar</button>
     </div>
-   
+ 
     <div class="shop-item">
       <div class="shop-item-info">
         <div class="shop-item-name">🚀 Cohete Espacial</div>
@@ -1012,8 +1139,33 @@ body.night-mode .island-cell.rocket {
       </div>
       <button id="buyRocketBtn" onclick="buyRocket()">Comprar</button>
     </div>
-   
+ 
     <button id="closeShop" onclick="closeShop()">Cerrar</button>
+  </div>
+</div>
+<!-- Modal de Inventario -->
+<div id="inventoryModal">
+  <div id="inventoryContent">
+    <h2>🎒 Inventario</h2>
+    <div id="inventoryItems"></div>
+    <button id="closeInventory" onclick="closeInventory()">Cerrar</button>
+  </div>
+</div>
+<!-- Modal de Tienda Global -->
+<div id="globalShopModal">
+  <div id="globalShopContent">
+    <h2>🌐 Tienda Global</h2>
+ 
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">🗿 Estatua Moai</div>
+        <div class="shop-item-desc">Estatua decorativa única para tu aldea</div>
+        <div class="shop-item-cost">💰 500 Oro</div>
+      </div>
+      <button id="buyStatueBtn" onclick="buyStatue()">Comprar</button>
+    </div>
+ 
+    <button id="closeGlobalShop" onclick="closeGlobalShop()">Cerrar</button>
   </div>
 </div>
 <!-- Modal de Top Jugadores -->
@@ -1044,7 +1196,7 @@ body.night-mode .island-cell.rocket {
           Este es un juego de construcción y estrategia donde podrás crear tu propia aldea y competir con otros jugadores.
         </div>
       </div>
-     
+   
       <div class="tutorial-step" data-step="2">
         <div class="tutorial-icon">🏰</div>
         <div class="tutorial-text">
@@ -1052,7 +1204,7 @@ body.night-mode .island-cell.rocket {
           Solo puedes construir una aldea, ¡así que elige bien la ubicación!
         </div>
       </div>
-     
+   
       <div class="tutorial-step" data-step="3">
         <div class="tutorial-icon">🏝️</div>
         <div class="tutorial-text">
@@ -1060,7 +1212,7 @@ body.night-mode .island-cell.rocket {
           Aquí podrás construir edificios y mejorar tu aldea.
         </div>
       </div>
-     
+   
       <div class="tutorial-step" data-step="4">
         <div class="tutorial-icon">💰</div>
         <div class="tutorial-text">
@@ -1068,7 +1220,7 @@ body.night-mode .island-cell.rocket {
           El oro te permite comprar más edificios y mejorar tu aldea.
         </div>
       </div>
-     
+   
       <div class="tutorial-step" data-step="5">
         <div class="tutorial-icon">📈</div>
         <div class="tutorial-text">
@@ -1076,7 +1228,7 @@ body.night-mode .island-cell.rocket {
           Sube de nivel para desbloquear más contenido y aparecer en el ranking.
         </div>
       </div>
-     
+   
       <div class="tutorial-step" data-step="6">
         <div class="tutorial-icon">🎮</div>
         <div class="tutorial-text">
@@ -1086,12 +1238,12 @@ body.night-mode .island-cell.rocket {
         </div>
       </div>
     </div>
-   
+ 
     <div class="tutorial-buttons">
       <button class="tutorial-button secondary" id="tutorialPrev" onclick="prevTutorialStep()">← Anterior</button>
       <button class="tutorial-button primary" id="tutorialNext" onclick="nextTutorialStep()">Siguiente →</button>
     </div>
-   
+ 
     <div class="tutorial-progress">
       Paso <span id="tutorialCurrentStep">1</span> de <span id="tutorialTotalSteps">6</span>
     </div>
@@ -1105,12 +1257,12 @@ body.night-mode .island-cell.rocket {
 <div id="loginModal">
   <div id="loginContent">
     <h2>🏰 Aldeas</h2>
-   
+ 
     <div class="login-tabs">
       <button class="tab-button active" onclick="showLoginTab()">Iniciar Sesión</button>
       <button class="tab-button" onclick="showRegisterTab()">Registrarse</button>
     </div>
-   
+ 
     <div id="loginForm" class="login-form active">
       <div class="form-group">
         <label>Nombre de Usuario</label>
@@ -1123,7 +1275,7 @@ body.night-mode .island-cell.rocket {
       <button class="login-button" onclick="handleLogin()">Entrar</button>
       <div class="error-message" id="loginError"></div>
     </div>
-   
+ 
     <div id="registerForm" class="login-form">
       <div class="form-group">
         <label>Nombre de Usuario</label>
@@ -1181,11 +1333,16 @@ const userLevelEl = document.getElementById('userLevel');
 const xpBar = document.getElementById('xpBar');
 const xpBarText = document.getElementById('xpBarText');
 const shopButton = document.getElementById('shopButton');
+const inventoryButton = document.getElementById('inventoryButton');
 const shopModal = document.getElementById('shopModal');
 const mineCountEl = document.getElementById('mineCount');
 const buyMineBtn = document.getElementById('buyMineBtn');
 const rocketCountEl = document.getElementById('rocketCount');
 const buyRocketBtn = document.getElementById('buyRocketBtn');
+const inventoryModal = document.getElementById('inventoryModal');
+const inventoryItems = document.getElementById('inventoryItems');
+const globalShopModal = document.getElementById('globalShopModal');
+const buyStatueBtn = document.getElementById('buyStatueBtn');
 const loginModal = document.getElementById('loginModal');
 const loginUsername = document.getElementById('loginUsername');
 const loginPassword = document.getElementById('loginPassword');
@@ -1277,11 +1434,12 @@ let currentVillageOwner = null;
 let currentGold = 0;
 let goldMines = [];
 let rockets = [];
+let statues = [];
 let userLevel = 1;
 let userXP = 0;
 let xpNeeded = 100;
-let isPlacingMine = false;
-let isPlacingRocket = false;
+let placingItem = null;
+let currentInventory = [];
 let firstTickDelay = 5000;
 // Variables para la isla
 let islandDragging = false;
@@ -1294,13 +1452,12 @@ let islandScale = 1;
 function checkSession() {
   const savedUser = localStorage.getItem('currentUser');
   const tutorialCompleted = localStorage.getItem('tutorialCompleted');
- 
   if (savedUser) {
     userName = savedUser;
     loginModal.style.display = 'none';
     checkIfUserHasBuilt();
     loadAchievements();
-   
+ 
     // Mostrar tutorial si es primera vez
     if (!tutorialCompleted) {
       setTimeout(() => {
@@ -1342,26 +1499,23 @@ window.showRegisterTab = function() {
 window.handleLogin = async function() {
   const username = loginUsername.value.trim();
   const password = loginPassword.value;
- 
   if (!username || !password) {
     loginError.textContent = 'Por favor completa todos los campos';
     loginError.style.display = 'block';
     return;
   }
- 
   showLoading();
- 
   try {
     const userRef = ref(db, `accounts/${username}`);
     const snapshot = await get(userRef);
-   
+ 
     if (!snapshot.exists()) {
       loginError.textContent = 'Usuario no encontrado';
       loginError.style.display = 'block';
       hideLoading();
       return;
     }
-   
+ 
     const userData = snapshot.val();
     if (userData.password !== password) {
       loginError.textContent = 'Contraseña incorrecta';
@@ -1369,14 +1523,14 @@ window.handleLogin = async function() {
       hideLoading();
       return;
     }
-   
+ 
     // Login exitoso
     userName = username;
     localStorage.setItem('currentUser', userName);
     loginModal.style.display = 'none';
     await checkIfUserHasBuilt();
     await loadAchievements();
-   
+ 
     // Mostrar tutorial si es primera vez
     const tutorialCompleted = localStorage.getItem('tutorialCompleted');
     if (!tutorialCompleted) {
@@ -1384,7 +1538,7 @@ window.handleLogin = async function() {
         tutorialModal.style.display = 'flex';
       }, 500);
     }
-   
+ 
     hideLoading();
   } catch (error) {
     console.error('Error en login:', error);
@@ -1397,58 +1551,52 @@ window.handleRegister = async function() {
   const username = registerUsername.value.trim();
   const password = registerPassword.value;
   const passwordConfirm = registerPasswordConfirm.value;
- 
   if (!username || !password || !passwordConfirm) {
     registerError.textContent = 'Por favor completa todos los campos';
     registerError.style.display = 'block';
     return;
   }
- 
   if (username.length < 3) {
     registerError.textContent = 'El nombre debe tener al menos 3 caracteres';
     registerError.style.display = 'block';
     return;
   }
- 
   if (password.length < 6) {
     registerError.textContent = 'La contraseña debe tener al menos 6 caracteres';
     registerError.style.display = 'block';
     return;
   }
- 
   if (password !== passwordConfirm) {
     registerError.textContent = 'Las contraseñas no coinciden';
     registerError.style.display = 'block';
     return;
   }
- 
   showLoading();
- 
   try {
     const userRef = ref(db, `accounts/${username}`);
     const snapshot = await get(userRef);
-   
+ 
     if (snapshot.exists()) {
       registerError.textContent = 'Este nombre de usuario ya existe';
       registerError.style.display = 'block';
       hideLoading();
       return;
     }
-   
+ 
     // Crear cuenta
     await set(ref(db, `accounts/${username}`), {
       password: password,
       createdAt: Date.now()
     });
-   
+ 
     // Login automático
     userName = username;
     localStorage.setItem('currentUser', userName);
     loginModal.style.display = 'none';
     hideLoading();
-   
+ 
     alert('¡Cuenta creada exitosamente!');
-   
+ 
     // Mostrar tutorial para nuevos usuarios
     setTimeout(() => {
       tutorialModal.style.display = 'flex';
@@ -1475,10 +1623,8 @@ window.toggleDayNight = function() {
 // Sistema de Logros
 async function loadAchievements() {
   if (!userName) return;
- 
   const achievementsRef = ref(db, `users/${userName}/achievements`);
   const snapshot = await get(achievementsRef);
- 
   if (snapshot.exists()) {
     achievements = snapshot.val();
   } else {
@@ -1487,15 +1633,13 @@ async function loadAchievements() {
 }
 async function unlockAchievement(achievementId) {
   if (!userName || achievements[achievementId]) return;
- 
   achievements[achievementId] = true;
   await set(ref(db, `users/${userName}/achievements/${achievementId}`), true);
- 
   const achievement = achievementDefinitions[achievementId];
   if (achievement) {
     // Mostrar notificación
     alert(`🏆 ¡Logro Desbloqueado!\n${achievement.name}\n${achievement.description}\nRecompensa: ${achievement.reward}`);
-   
+ 
     // Dar recompensa
     if (achievement.reward.includes('XP')) {
       const xpAmount = parseInt(achievement.reward.match(/\d+/)[0]);
@@ -1510,32 +1654,26 @@ async function unlockAchievement(achievementId) {
 }
 async function checkAchievements() {
   if (!userName) return;
- 
   // Verificar logro de nivel 5
   if (userLevel >= 5 && !achievements.level5) {
     await unlockAchievement('level5');
   }
- 
   // Verificar logro de nivel 10
   if (userLevel >= 10 && !achievements.level10) {
     await unlockAchievement('level10');
   }
- 
   // Verificar logro de rico
   if (currentGold >= 500 && !achievements.rich) {
     await unlockAchievement('rich');
   }
- 
   // Verificar logro de millonario
   if (currentGold >= 1000 && !achievements.millionaire) {
     await unlockAchievement('millionaire');
   }
- 
   // Verificar logro de minas máximas
   if (goldMines.length >= 2 && !achievements.maxMines) {
     await unlockAchievement('maxMines');
   }
- 
   // Verificar logro del cohete
   if (rockets.length >= 1 && !achievements.rocket) {
     await unlockAchievement('rocket');
@@ -1544,16 +1682,14 @@ async function checkAchievements() {
 window.openAchievements = async function() {
   achievementsModal.style.display = 'flex';
   await loadAchievements();
- 
   achievementsList.innerHTML = '';
- 
   for (let key in achievementDefinitions) {
     const achievement = achievementDefinitions[key];
     const isUnlocked = achievements[achievement.id];
-   
+ 
     const achievementItem = document.createElement('div');
     achievementItem.className = `achievement-item ${isUnlocked ? 'unlocked' : ''}`;
-   
+ 
     achievementItem.innerHTML = `
       <div class="achievement-icon">${achievement.icon}</div>
       <div class="achievement-info">
@@ -1565,7 +1701,7 @@ window.openAchievements = async function() {
         ${isUnlocked ? '✅' : '🔒'}
       </div>
     `;
-   
+ 
     achievementsList.appendChild(achievementItem);
   }
 }
@@ -1579,9 +1715,9 @@ window.nextTutorialStep = function() {
     currentTutorialStep++;
     document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.add('active');
     document.getElementById('tutorialCurrentStep').textContent = currentTutorialStep;
-   
+ 
     document.getElementById('tutorialPrev').style.display = 'block';
-   
+ 
     if (currentTutorialStep === 6) {
       document.getElementById('tutorialNext').textContent = '¡Empezar!';
     }
@@ -1598,11 +1734,11 @@ window.prevTutorialStep = function() {
     currentTutorialStep--;
     document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.add('active');
     document.getElementById('tutorialCurrentStep').textContent = currentTutorialStep;
-   
+ 
     if (currentTutorialStep === 1) {
       document.getElementById('tutorialPrev').style.display = 'none';
     }
-   
+ 
     document.getElementById('tutorialNext').textContent = 'Siguiente →';
   }
 }
@@ -1610,21 +1746,20 @@ window.prevTutorialStep = function() {
 window.openTopPlayers = async function() {
   showLoading();
   topPlayersModal.style.display = 'flex';
- 
   try {
     // Obtener todos los usuarios con nivel
     const usersRef = ref(db, 'users');
     const snapshot = await get(usersRef);
-   
+ 
     if (!snapshot.exists()) {
       topPlayersList.innerHTML = '<div class="no-players-message">No hay jugadores todavía</div>';
       hideLoading();
       return;
     }
-   
+ 
     const users = snapshot.val();
     const playersArray = [];
-   
+ 
     // Convertir a array y calcular XP total
     for (let username in users) {
       if (users[username].level) {
@@ -1633,7 +1768,7 @@ window.openTopPlayers = async function() {
         const xp = levelData.xp || 0;
         // XP total = XP de niveles completados + XP actual
         const totalXP = ((level - 1) * level * 100 / 2) + xp;
-       
+     
         playersArray.push({
           username: username,
           level: level,
@@ -1642,25 +1777,25 @@ window.openTopPlayers = async function() {
         });
       }
     }
-   
+ 
     // Ordenar por XP total
     playersArray.sort((a, b) => b.totalXP - a.totalXP);
-   
+ 
     // Mostrar top 10
     topPlayersList.innerHTML = '';
     const top10 = playersArray.slice(0, 10);
-   
+ 
     if (top10.length === 0) {
       topPlayersList.innerHTML = '<div class="no-players-message">No hay jugadores todavía</div>';
     } else {
       top10.forEach((player, index) => {
         const rank = index + 1;
         const rankClass = rank === 1 ? 'first' : rank === 2 ? 'second' : rank === 3 ? 'third' : '';
-       
+     
         const playerItem = document.createElement('div');
         playerItem.className = 'top-player-item';
         playerItem.onclick = () => visitPlayerVillage(player.username);
-       
+     
         playerItem.innerHTML = `
           <div class="top-player-rank ${rankClass}">${rank}</div>
           <div class="top-player-info">
@@ -1669,11 +1804,11 @@ window.openTopPlayers = async function() {
           </div>
           <div class="top-player-xp">${Math.floor(player.totalXP)} XP</div>
         `;
-       
+     
         topPlayersList.appendChild(playerItem);
       });
     }
-   
+ 
     hideLoading();
   } catch (error) {
     console.error('Error cargando top jugadores:', error);
@@ -1687,16 +1822,15 @@ window.closeTopPlayers = function() {
 async function visitPlayerVillage(username) {
   closeTopPlayers();
   showLoading();
- 
   try {
     // Buscar la aldea del jugador
     const villagesRef = ref(db, 'villages');
     const snapshot = await get(villagesRef);
-   
+ 
     if (snapshot.exists()) {
       const villages = snapshot.val();
       let found = false;
-     
+   
       for (let key in villages) {
         if (villages[key].owner === username) {
           found = true;
@@ -1705,20 +1839,133 @@ async function visitPlayerVillage(username) {
           break;
         }
       }
-     
+   
       if (!found) {
         alert(`${username} aún no ha construido su aldea`);
       }
     } else {
       alert(`${username} aún no ha construido su aldea`);
     }
-   
+ 
     hideLoading();
   } catch (error) {
     console.error('Error buscando aldea:', error);
     alert('Error al buscar la aldea del jugador');
     hideLoading();
   }
+}
+// Funciones de Tienda Global
+window.openGlobalShop = async function() {
+  if (!userName) {
+    alert('Debes iniciar sesión para acceder a la tienda global');
+    return;
+  }
+  globalShopModal.style.display = 'flex';
+  const globalShopRef = ref(db, 'globalShop/statue');
+  const snapshot = await get(globalShopRef);
+  const sold = snapshot.exists() ? snapshot.val().sold : false;
+  if (sold) {
+    buyStatueBtn.disabled = true;
+    buyStatueBtn.textContent = 'Agotado';
+  } else {
+    buyStatueBtn.disabled = false;
+    buyStatueBtn.textContent = 'Comprar';
+  }
+}
+window.closeGlobalShop = function() {
+  globalShopModal.style.display = 'none';
+}
+async function getCurrentGold() {
+  const userResourcesRef = ref(db, `users/${userName}/resources`);
+  const snapshot = await get(userResourcesRef);
+  let resources = snapshot.exists() ? snapshot.val() : {gold: 100, lastUpdate: Date.now()};
+  let gold = resources.gold || 100;
+  let lastUpdate = resources.lastUpdate || Date.now();
+  const buildingsRef = ref(db, `users/${userName}/buildings`);
+  const buildSnap = await get(buildingsRef);
+  const goldMinesCount = buildSnap.exists() ? (buildSnap.val().goldMines || []).length : 0;
+  let now = Date.now();
+  let deltaMs = now - lastUpdate;
+  let intervalsPassed = Math.floor(deltaMs / 5000);
+  if (goldMinesCount > 0 && intervalsPassed > 0) {
+    let accumGold = intervalsPassed * 10 * goldMinesCount;
+    gold += accumGold;
+  }
+  return gold;
+}
+window.buyStatue = async function() {
+  const cost = 500;
+  showLoading();
+  try {
+    let gold = await getCurrentGold();
+    if (gold < cost) {
+      alert(`Necesitas ${cost} de oro. Tienes ${gold}.`);
+      hideLoading();
+      return;
+    }
+    const globalShopRef = ref(db, 'globalShop/statue');
+    const snapshot = await get(globalShopRef);
+    const sold = snapshot.exists() ? snapshot.val().sold : false;
+    if (sold) {
+      alert('Ya se agotó');
+      hideLoading();
+      return;
+    }
+    await set(globalShopRef, {sold: true, buyer: userName, timestamp: Date.now()});
+    gold -= cost;
+    await set(ref(db, `users/${userName}/resources`), {gold: gold, lastUpdate: Date.now()});
+    const inventoryRef = ref(db, `users/${userName}/inventory/items`);
+    const snap = await get(inventoryRef);
+    let items = snap.exists() ? snap.val() : [];
+    items.push('statue');
+    await set(inventoryRef, items);
+    closeGlobalShop();
+    alert('¡Compra exitosa! La estatua Moai ha sido añadida a tu inventario. Entra a tu aldea y abre el inventario para colocarla.');
+  } catch (error) {
+    console.error('Error comprando estatua:', error);
+    alert('Error al comprar la estatua.');
+  }
+  hideLoading();
+}
+// Funciones de Inventario
+window.openInventory = async function() {
+  inventoryModal.style.display = 'flex';
+  inventoryItems.innerHTML = '';
+  showLoading();
+  const inventoryRef = ref(db, `users/${userName}/inventory/items`);
+  const snap = await get(inventoryRef);
+  let items = snap.exists() ? snap.val() : [];
+  currentInventory = items;
+  hideLoading();
+  if (items.length === 0) {
+    inventoryItems.innerHTML = '<div style="color:white; text-align:center; padding:20px;">Inventario vacío</div>';
+  } else {
+    items.forEach((itemType, index) => {
+      let itemDiv = document.createElement('div');
+      itemDiv.className = 'shop-item';
+      let name = '', desc = '';
+      if (itemType === 'statue') {
+        name = '🗿 Estatua Moai';
+        desc = 'Estatua decorativa única para tu aldea';
+      }
+      itemDiv.innerHTML = `
+        <div class="shop-item-info">
+          <div class="shop-item-name">${name}</div>
+          <div class="shop-item-desc">${desc}</div>
+        </div>
+        <button onclick="placeFromInventory(${index})">Colocar</button>
+      `;
+      inventoryItems.appendChild(itemDiv);
+    });
+  }
+}
+window.placeFromInventory = function(index) {
+  placingItem = currentInventory[index];
+  closeInventory();
+  alert(`Haz click en una celda verde para colocar la ${placingItem === 'statue' ? 'estatua Moai' : ''}`);
+}
+window.closeInventory = function() {
+  inventoryModal.style.display = 'none';
 }
 // Crear mapa con bordes
 let map = [];
@@ -1734,7 +1981,7 @@ for (let r = 0; r < rows; r++) {
   map[r] = [];
   for (let c = 0; c < cols; c++) {
     let terrain;
-   
+ 
     if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) {
       terrain = 'wall';
     }
@@ -1747,15 +1994,15 @@ for (let r = 0; r < rows; r++) {
     else {
       terrain = 'grass';
     }
-   
+ 
     map[r][c] = { terrain, building: null, owner: null };
-   
+ 
     const cell = document.createElement('div');
     cell.classList.add('cell', terrain);
     cell.dataset.row = r;
     cell.dataset.col = c;
     cell.addEventListener('click', () => handleCellClick(cell));
-   
+ 
     cellElements[`${r}-${c}`] = cell;
     mapEl.appendChild(cell);
   }
@@ -1771,16 +2018,16 @@ onValue(villagesRef, (snapshot) => {
       const r = village.row;
       const c = village.col;
       const owner = village.owner;
-     
+   
       if (map[r] && map[r][c]) {
         map[r][c].building = 'house';
         map[r][c].owner = owner;
-       
+     
         const cell = cellElements[`${r}-${c}`];
         if (cell) {
           cell.classList.add('building');
           cell.textContent = '🏰';
-         
+       
           const nameLabel = document.createElement('div');
           nameLabel.className = 'owner-name';
           nameLabel.textContent = owner;
@@ -1799,7 +2046,6 @@ async function loadUserResources(owner) {
     updateResourcesDisplay();
     return;
   }
-
   const userResourcesRef = ref(db, `users/${owner}/resources`);
   const snapshot = await get(userResourcesRef);
   let resources = snapshot.exists() ? snapshot.val() : {gold: 100, lastUpdate: Date.now()};
@@ -1808,14 +2054,12 @@ async function loadUserResources(owner) {
   let now = Date.now();
   let deltaMs = now - lastUpdate;
   let intervalsPassed = Math.floor(deltaMs / 5000);
-
   if (goldMines.length > 0 && intervalsPassed > 0) {
     let accumGold = intervalsPassed * 10 * goldMines.length;
     currentGold += accumGold;
     await addXP(intervalsPassed);
     await checkAchievements();
   }
-
   firstTickDelay = 5000 - (deltaMs % 5000);
   await set(ref(db, `users/${owner}/resources`), { gold: currentGold, lastUpdate: now });
   updateResourcesDisplay();
@@ -1843,10 +2087,12 @@ async function loadIslandBuildings(owner) {
   const snapshot = await get(buildingsRef);
   goldMines = [];
   rockets = [];
+  statues = [];
   if (snapshot.exists()) {
     const buildings = snapshot.val();
     goldMines = buildings.goldMines || [];
     rockets = buildings.rockets || [];
+    statues = buildings.statues || [];
   }
   updateShopUI();
 }
@@ -1863,7 +2109,6 @@ function updateLevelDisplay() {
 function updateShopUI() {
   mineCountEl.textContent = goldMines.length;
   rocketCountEl.textContent = rockets.length;
- 
   if (goldMines.length >= 2) {
     buyMineBtn.disabled = true;
     buyMineBtn.textContent = 'Máximo alcanzado';
@@ -1871,7 +2116,6 @@ function updateShopUI() {
     buyMineBtn.disabled = false;
     buyMineBtn.textContent = 'Comprar';
   }
- 
   if (rockets.length >= 1) {
     buyRocketBtn.disabled = true;
     buyRocketBtn.textContent = 'Máximo alcanzado';
@@ -1882,7 +2126,6 @@ function updateShopUI() {
 }
 async function addXP(amount) {
   userXP += amount;
- 
   // Verificar si subió de nivel
   while (userXP >= xpNeeded) {
     userXP -= xpNeeded;
@@ -1890,41 +2133,32 @@ async function addXP(amount) {
     xpNeeded = userLevel * 100;
     alert(`¡Felicidades! Subiste al nivel ${userLevel}`);
   }
- 
   await set(ref(db, `users/${currentVillageOwner}/level`), { level: userLevel, xp: userXP });
   updateLevelDisplay();
 }
 async function handleCellClick(cell) {
   if (hasDragged) return;
- 
   const r = cell.dataset.row;
   const c = cell.dataset.col;
- 
   if (map[r][c].building === 'house') {
     openIsland(map[r][c].owner);
     return;
   }
- 
   build(cell);
 }
 async function build(cell) {
   const r = parseInt(cell.dataset.row);
   const c = parseInt(cell.dataset.col);
- 
   if (userHasBuilt) {
     alert('Ya has colocado tu aldea. Solo puedes construir una aldea.');
     return;
   }
- 
   if (map[r][c].terrain !== 'grass' || map[r][c].building) return;
- 
   if (!userName) {
     alert('Error: No has iniciado sesión');
     return;
   }
- 
   showLoading();
- 
   try {
     // Guardar en Firebase
     const villageId = `${r}-${c}`;
@@ -1934,37 +2168,34 @@ async function build(cell) {
       owner: userName,
       timestamp: Date.now()
     });
-   
+ 
     map[r][c].building = 'house';
     map[r][c].owner = userName;
     cell.classList.add('building');
     cell.textContent = '🏰';
-   
+ 
     const nameLabel = document.createElement('div');
     nameLabel.className = 'owner-name';
     nameLabel.textContent = userName;
     cell.appendChild(nameLabel);
-   
+ 
     userHasBuilt = true;
-   
+ 
     // Desbloquear logro de primera aldea
     await unlockAchievement('firstVillage');
   } catch (error) {
     console.error('Error guardando aldea:', error);
     alert('Error al guardar la aldea. Intenta de nuevo.');
   }
- 
   hideLoading();
 }
 async function openIsland(owner) {
   currentVillageOwner = owner;
   ownerNameSpan.textContent = owner;
- 
   // Verificar si está visitando la aldea de otro jugador
   if (owner !== userName && userName) {
     unlockAchievement('explorer');
   }
- 
   // Cargar edificios, recursos, nivel
   await loadIslandBuildings(owner);
   await loadUserResources(owner);
@@ -1972,16 +2203,14 @@ async function openIsland(owner) {
   if (owner === userName && goldMines.length > 0) {
     startGoldGeneration();
   }
- 
   islandContainer.innerHTML = '';
- 
   for (let r = 0; r < 20; r++) {
     for (let c = 0; c < 20; c++) {
       const islandCell = document.createElement('div');
       islandCell.classList.add('island-cell');
       islandCell.dataset.row = r;
       islandCell.dataset.col = c;
-     
+   
       if (r === 10 && c === 10) {
         islandCell.classList.add('center');
         islandCell.textContent = '🏰';
@@ -1991,11 +2220,10 @@ async function openIsland(owner) {
           islandCell.addEventListener('click', () => handleIslandCellClick(islandCell));
         }
       }
-     
+   
       islandContainer.appendChild(islandCell);
     }
   }
- 
   // Cargar minas de oro existentes
   setTimeout(() => {
     goldMines.forEach(mine => {
@@ -2005,7 +2233,7 @@ async function openIsland(owner) {
         cell.textContent = '⛏️';
       }
     });
-   
+ 
     // Cargar cohetes existentes
     rockets.forEach(rocket => {
       const cell = islandContainer.querySelector(`[data-row="${rocket.row}"][data-col="${rocket.col}"]`);
@@ -2014,14 +2242,20 @@ async function openIsland(owner) {
         cell.textContent = '🚀';
       }
     });
-  }, 100);
  
+    // Cargar estatuas existentes
+    statues.forEach(statue => {
+      const cell = islandContainer.querySelector(`[data-row="${statue.row}"][data-col="${statue.col}"]`);
+      if (cell) {
+        cell.classList.add('statue');
+        cell.textContent = '🗿';
+      }
+    });
+  }, 100);
   islandTranslateX = 0;
   islandTranslateY = 0;
   islandScale = 1;
- 
   fade.style.opacity = 1;
- 
   setTimeout(() => {
     mainMap.style.opacity = 0;
     islandView.style.opacity = 1;
@@ -2032,113 +2266,146 @@ async function openIsland(owner) {
     islandAchievementsButton.style.pointerEvents = 'auto';
     resourcesPanel.style.display = 'block';
     userInfoPanel.style.display = 'block';
-   
-    // Mostrar botón de tienda solo si es tu isla
+ 
+    // Mostrar botón de tienda e inventario solo si es tu isla
     if (owner === userName) {
       shopButton.style.display = 'block';
+      inventoryButton.style.display = 'block';
     }
-   
+ 
     setTimeout(() => {
       islandTranslateX = (islandViewport.clientWidth - islandContainer.offsetWidth) / 2;
       islandTranslateY = (islandViewport.clientHeight - islandContainer.offsetHeight) / 2;
       updateIslandTransform();
     }, 50);
   }, 400);
- 
   setTimeout(() => {
     fade.style.opacity = 0;
   }, 900);
 }
 async function handleIslandCellClick(cell) {
   if (islandHasDragged) return;
- 
   const r = parseInt(cell.dataset.row);
   const c = parseInt(cell.dataset.col);
- 
   // No construir en el centro
   if (r === 10 && c === 10) {
     alert('No puedes construir en el castillo');
     return;
   }
- 
   // Verificar si ya hay algo construido
-  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket')) {
+  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket') || cell.classList.contains('statue')) {
     alert('Ya hay una estructura aquí');
     return;
   }
- 
-  // Si está en modo de colocar mina desde la tienda
-  if (isPlacingMine) {
+  // Si está en modo de colocar
+  if (placingItem === 'mine') {
     showLoading();
-   
+ 
     try {
       // Guardar mina
       goldMines.push({ row: r, col: c });
       await set(ref(db, `users/${currentVillageOwner}/buildings`), {
         goldMines,
-        rockets
+        rockets,
+        statues
       });
-     
+   
       // Actualizar visualmente
       cell.classList.add('gold-mine');
       cell.textContent = '⛏️';
-     
+   
       // Dar XP por construir
       await addXP(25);
-     
-      isPlacingMine = false;
+   
+      placingItem = null;
       updateShopUI();
-     
+   
       // Iniciar generación de oro
       startGoldGeneration();
-     
+   
       // Verificar logro de primera mina
       if (goldMines.length === 1) {
         await unlockAchievement('firstMine');
       }
-     
+   
       alert('¡Mina construida! +25 XP');
     } catch (error) {
       console.error('Error construyendo mina:', error);
       alert('Error al construir la mina.');
     }
-   
+ 
     hideLoading();
   }
- 
-  // Si está en modo de colocar cohete desde la tienda
-  else if (isPlacingRocket) {
+  else if (placingItem === 'rocket') {
     showLoading();
-   
+ 
     try {
       // Guardar cohete
       rockets.push({ row: r, col: c });
       await set(ref(db, `users/${currentVillageOwner}/buildings`), {
         goldMines,
-        rockets
+        rockets,
+        statues
       });
-     
+   
       // Actualizar visualmente
       cell.classList.add('rocket');
       cell.textContent = '🚀';
-     
+   
       // Dar XP por construir
       await addXP(100);
-     
-      isPlacingRocket = false;
+   
+      placingItem = null;
       updateShopUI();
-     
+   
       // Verificar logro del cohete
       if (rockets.length === 1) {
         await unlockAchievement('rocket');
       }
-     
+   
       alert('¡Cohete construido! +100 XP');
     } catch (error) {
       console.error('Error construyendo cohete:', error);
       alert('Error al construir el cohete.');
     }
+ 
+    hideLoading();
+  }
+  else if (placingItem === 'statue') {
+    showLoading();
+ 
+    try {
+      // Guardar estatua
+      statues.push({ row: r, col: c });
+      await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+        goldMines,
+        rockets,
+        statues
+      });
    
+      // Actualizar visualmente
+      cell.classList.add('statue');
+      cell.textContent = '🗿';
+   
+      // Dar XP por colocar
+      await addXP(50);
+   
+      // Remover del inventario
+      const inventoryRef = ref(db, `users/${userName}/inventory/items`);
+      const snap = await get(inventoryRef);
+      let items = snap.exists() ? snap.val() : [];
+      const index = items.indexOf('statue');
+      if (index > -1) items.splice(index, 1);
+      await set(inventoryRef, items);
+   
+      placingItem = null;
+   
+      alert('¡Estatua Moai colocada! +50 XP');
+    } catch (error) {
+      console.error('Error colocando estatua:', error);
+      alert('Error al colocar la estatua.');
+    }
+ 
     hideLoading();
   }
 }
@@ -2156,22 +2423,18 @@ window.buyMine = async function() {
     alert('Ya tienes el máximo de minas (2)');
     return;
   }
- 
   // Verificar oro
   const mineCost = 50;
   if (currentGold < mineCost) {
     alert(`Necesitas ${mineCost} de oro. Tienes ${currentGold}.`);
     return;
   }
- 
   // Descontar oro
   currentGold -= mineCost;
   await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold, lastUpdate: Date.now() });
   updateResourcesDisplay();
- 
   // Activar modo de colocación
-  isPlacingMine = true;
-  isPlacingRocket = false;
+  placingItem = 'mine';
   closeShop();
   alert('Haz click en una celda verde para colocar la mina');
 }
@@ -2181,22 +2444,18 @@ window.buyRocket = async function() {
     alert('Ya tienes el máximo de cohetes (1)');
     return;
   }
- 
   // Verificar oro
   const rocketCost = 2000;
   if (currentGold < rocketCost) {
     alert(`Necesitas ${rocketCost} de oro. Tienes ${currentGold}.`);
     return;
   }
- 
   // Descontar oro
   currentGold -= rocketCost;
   await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold, lastUpdate: Date.now() });
   updateResourcesDisplay();
- 
   // Activar modo de colocación
-  isPlacingRocket = true;
-  isPlacingMine = false;
+  placingItem = 'rocket';
   closeShop();
   alert('Haz click en una celda verde para colocar el cohete');
 }
@@ -2204,7 +2463,6 @@ window.buyRocket = async function() {
 let goldInterval = null;
 function startGoldGeneration() {
   if (goldInterval) return;
-
   setTimeout(async () => {
     if (currentVillageOwner === userName && goldMines.length > 0) {
       currentGold += 10 * goldMines.length;
@@ -2213,7 +2471,6 @@ function startGoldGeneration() {
       updateResourcesDisplay();
       await set(ref(db, `users/${userName}/resources`), {gold: currentGold, lastUpdate: Date.now() });
     }
-
     goldInterval = setInterval(async () => {
       if (currentVillageOwner === userName && goldMines.length > 0) {
         currentGold += 10 * goldMines.length;
@@ -2223,21 +2480,16 @@ function startGoldGeneration() {
         await set(ref(db, `users/${userName}/resources`), {gold: currentGold, lastUpdate: Date.now() });
       }
     }, 5000);
-
   }, firstTickDelay);
 }
 function backToMap() {
   fade.style.opacity = 1;
- 
   // Detener generación de oro
   if (goldInterval) {
     clearInterval(goldInterval);
     goldInterval = null;
   }
- 
-  isPlacingMine = false;
-  isPlacingRocket = false;
- 
+  placingItem = null;
   setTimeout(() => {
     islandView.style.opacity = 0;
     islandView.style.pointerEvents = 'none';
@@ -2248,9 +2500,9 @@ function backToMap() {
     resourcesPanel.style.display = 'none';
     userInfoPanel.style.display = 'none';
     shopButton.style.display = 'none';
+    inventoryButton.style.display = 'none';
     mainMap.style.opacity = 1;
   }, 400);
- 
   setTimeout(() => {
     fade.style.opacity = 0;
   }, 900);
@@ -2310,37 +2562,28 @@ viewport.addEventListener('mouseleave', () => {
 viewport.addEventListener('mousemove', e => {
   if (!isDragging) return;
   e.preventDefault();
- 
   const deltaX = Math.abs(e.clientX - startX - translateX);
   const deltaY = Math.abs(e.clientY - startY - translateY);
- 
   if (deltaX > 3 || deltaY > 3) {
     hasDragged = true;
   }
- 
   translateX = e.clientX - startX;
   translateY = e.clientY - startY;
   updateTransform();
 });
 viewport.addEventListener('wheel', e => {
   e.preventDefault();
- 
   const rect = viewport.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
- 
   const beforeX = (mouseX - translateX) / scale;
   const beforeY = (mouseY - translateY) / scale;
- 
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
   const newScale = Math.min(Math.max(scale + delta, 0.3), 3);
- 
   const afterX = (mouseX - translateX) / newScale;
   const afterY = (mouseY - translateY) / newScale;
- 
   translateX += (afterX - beforeX) * newScale;
   translateY += (afterY - beforeY) * newScale;
- 
   scale = newScale;
   updateTransform();
 });
@@ -2365,37 +2608,28 @@ islandViewport.addEventListener('mouseleave', () => {
 islandViewport.addEventListener('mousemove', e => {
   if (!islandDragging) return;
   e.preventDefault();
- 
   const deltaX = Math.abs(e.clientX - islandStartX - islandTranslateX);
   const deltaY = Math.abs(e.clientY - islandStartY - islandTranslateY);
- 
   if (deltaX > 3 || deltaY > 3) {
     islandHasDragged = true;
   }
- 
   islandTranslateX = e.clientX - islandStartX;
   islandTranslateY = e.clientY - islandStartY;
   updateIslandTransform();
 });
 islandViewport.addEventListener('wheel', e => {
   e.preventDefault();
- 
   const rect = islandViewport.getBoundingClientRect();
   const mouseX = e.clientX - rect.left;
   const mouseY = e.clientY - rect.top;
- 
   const beforeX = (mouseX - islandTranslateX) / islandScale;
   const beforeY = (mouseY - islandTranslateY) / islandScale;
- 
   const delta = e.deltaY < 0 ? 0.1 : -0.1;
   const newScale = Math.min(Math.max(islandScale + delta, 0.3), 3);
- 
   const afterX = (mouseX - islandTranslateX) / newScale;
   const afterY = (mouseY - islandTranslateY) / newScale;
- 
   islandTranslateX += (afterX - beforeX) * newScale;
   islandTranslateY += (afterY - beforeY) * newScale;
- 
   islandScale = newScale;
   updateIslandTransform();
 });
