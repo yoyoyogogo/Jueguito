@@ -1,0 +1,2463 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa de Aldeas</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  margin: 0;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #4da6ff;
+  font-family: sans-serif;
+  transition: background-color 0.5s ease;
+}
+
+body.night-mode {
+  background-color: #1a1a2e;
+}
+
+/* === Mapa principal === */
+#mainMap {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.4s ease;
+}
+
+#mainMap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 20, 0);
+  pointer-events: none;
+  transition: background 0.5s ease;
+  z-index: 1;
+}
+
+body.night-mode #mainMap::before {
+  background: rgba(0, 0, 20, 0.6);
+}
+
+#viewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+}
+#world {
+  position: absolute;
+  transform-origin: 0 0;
+  width: 100%;
+  height: 100%;
+}
+#map {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(50, 40px);
+  grid-template-rows: repeat(50, 40px);
+  gap: 2px;
+  background-color: #4da6ff;
+  padding: 200px;
+  transition: background-color 0.5s ease;
+}
+
+body.night-mode #map {
+  background-color: #1a1a2e;
+}
+#map.no-grid {
+  gap: 0px;
+}
+.cell {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: white;
+  font-weight: bold;
+  border-radius: 4px;
+  user-select: none;
+  cursor: pointer;
+  position: relative;
+}
+#map.no-grid .cell {
+  border-radius: 0px;
+}
+.cell .owner-name {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  margin-bottom: 5px;
+  z-index: 100;
+}
+.cell:hover .owner-name {
+  opacity: 1;
+}
+.grass { 
+  background-color: #4CAF50;
+  transition: background-color 0.5s ease;
+}
+body.night-mode .grass {
+  background-color: #2d5016;
+}
+
+.road { 
+  background-color: #A1887F;
+  transition: background-color 0.5s ease;
+}
+body.night-mode .road {
+  background-color: #5d4e42;
+}
+
+.mountain { 
+  background-color: #9E9E9E;
+  transition: background-color 0.5s ease;
+}
+body.night-mode .mountain {
+  background-color: #4a4a4a;
+}
+.building { 
+  background-color: #8B4513;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+.building:hover {
+  transform: scale(1.2);
+}
+.wall { 
+  background-color: #9E9E9E;
+  cursor: pointer;
+}
+
+#gridToggle {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1000;
+  transition: background 0.3s;
+}
+#gridToggle:hover {
+  background: #f0f0f0;
+}
+
+/* === Vista de la isla === */
+#islandView {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #4da6ff;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.6s ease;
+}
+
+body.night-mode #islandView {
+  background-color: #1a1a2e;
+}
+
+#islandViewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+}
+
+#islandWorld {
+  position: absolute;
+  transform-origin: 0 0;
+  width: 100%;
+  height: 100%;
+}
+
+#islandContainer {
+  position: absolute;
+  display: grid;
+  grid-template-columns: repeat(20, 40px);
+  grid-template-rows: repeat(20, 40px);
+  gap: 2px;
+  background-color: #4da6ff;
+  padding: 200px;
+  transition: background-color 0.5s ease;
+}
+
+body.night-mode #islandContainer {
+  background-color: #1a1a2e;
+}
+
+#islandContainer.no-grid {
+  gap: 0px;
+}
+
+.island-cell {
+  width: 40px;
+  height: 40px;
+  background-color: #4CAF50;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  user-select: none;
+  color: white;
+  font-weight: bold;
+  transition: background-color 0.5s ease;
+}
+
+body.night-mode .island-cell {
+  background-color: #2d5016;
+}
+
+#islandContainer.no-grid .island-cell {
+  border-radius: 0px;
+}
+
+.island-cell.center {
+  background-color: #8B4513;
+}
+
+body.night-mode .island-cell.center {
+  background-color: #5d2e0b;
+}
+
+.island-cell.gold-mine {
+  background-color: #FFD700;
+  color: #000;
+}
+
+body.night-mode .island-cell.gold-mine {
+  background-color: #b39700;
+}
+
+.island-cell.building-hover:hover {
+  background-color: rgba(255, 215, 0, 0.5);
+  cursor: pointer;
+}
+
+#backButton {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  padding: 12px 24px;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  z-index: 100;
+  transition: background 0.3s;
+}
+
+#backButton:hover {
+  background: #f0f0f0;
+}
+
+#islandTitle {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: white;
+  font-size: 2em;
+  text-shadow: 0 0 20px rgba(0,0,0,0.8);
+  z-index: 100;
+}
+
+#resourcesPanel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px 20px;
+  border-radius: 10px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  display: none;
+}
+
+#goldAmount {
+  margin-left: 10px;
+}
+
+#userInfoPanel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 15px 20px;
+  border-radius: 10px;
+  color: white;
+  z-index: 100;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+  display: none;
+  min-width: 250px;
+}
+
+#userInfoPanel h3 {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+}
+
+#levelInfo {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+#xpBarContainer {
+  background: rgba(255, 255, 255, 0.2);
+  height: 20px;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+#xpBar {
+  background: linear-gradient(90deg, #4CAF50, #8BC34A);
+  height: 100%;
+  width: 0%;
+  transition: width 0.5s ease;
+  position: relative;
+}
+
+#xpBarText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 3px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+#shopButton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+  display: none;
+}
+
+#shopButton:hover {
+  transform: scale(1.05);
+}
+
+#shopModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+#shopContent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+
+#shopContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 28px;
+}
+
+.shop-item {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.shop-item-info {
+  flex: 1;
+}
+
+.shop-item-name {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.shop-item-desc {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 5px;
+}
+
+.shop-item-cost {
+  font-size: 16px;
+  color: #FFD700;
+  font-weight: bold;
+}
+
+.shop-item button {
+  padding: 10px 20px;
+  background: #4CAF50;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s;
+}
+
+.shop-item button:hover {
+  background: #45a049;
+}
+
+.shop-item button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+#closeShop {
+  display: block;
+  margin: 20px auto 0;
+  padding: 12px 30px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#closeShop:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+#islandGridToggle {
+  position: fixed;
+  bottom: 70px;
+  left: 20px;
+  padding: 12px 20px;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1000;
+  transition: background 0.3s;
+  opacity: 0;
+  pointer-events: none;
+}
+#islandGridToggle:hover {
+  background: #f0f0f0;
+}
+
+/* === Transición negra === */
+#fade {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: black;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* === Loading === */
+#loading {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 20px 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  z-index: 10000;
+  display: none;
+}
+
+/* === Login Modal === */
+#loginModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 20000;
+}
+
+#loginContent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px;
+  border-radius: 20px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+
+#loginContent h2 {
+  color: white;
+  margin: 0 0 30px 0;
+  text-align: center;
+  font-size: 32px;
+}
+
+.login-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s;
+}
+
+.tab-button.active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.tab-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.login-form {
+  display: none;
+}
+
+.login-form.active {
+  display: block;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  color: white;
+  margin-bottom: 8px;
+  font-weight: bold;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus {
+  outline: 2px solid white;
+}
+
+.login-button {
+  width: 100%;
+  padding: 15px;
+  background: #4CAF50;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 0.3s;
+}
+
+.login-button:hover {
+  background: #45a049;
+}
+
+.error-message {
+  color: #ffcccc;
+  background: rgba(255, 0, 0, 0.2);
+  padding: 10px;
+  border-radius: 5px;
+  margin-top: 15px;
+  text-align: center;
+  display: none;
+}
+
+#logoutButton {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 1000;
+  transition: background 0.3s;
+}
+
+#logoutButton:hover {
+  background: #f0f0f0;
+}
+
+#dayNightToggle {
+  position: fixed;
+  top: 120px;
+  right: 20px;
+  padding: 12px 20px;
+  background: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 24px;
+  z-index: 1000;
+  transition: background 0.3s;
+}
+
+#dayNightToggle:hover {
+  background: #f0f0f0;
+}
+
+#achievementsButton {
+  position: fixed;
+  top: 170px;
+  right: 20px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+}
+
+#achievementsButton:hover {
+  transform: scale(1.05);
+}
+
+/* === Botón de logros en la vista de isla === */
+#islandAchievementsButton {
+  position: fixed;
+  top: 170px;
+  right: 20px;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#islandAchievementsButton:hover {
+  transform: scale(1.05);
+}
+
+/* === Top Players Button & Modal === */
+#topPlayersButton {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 15px 30px;
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  cursor: pointer;
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  z-index: 1000;
+  transition: transform 0.3s;
+}
+
+#topPlayersButton:hover {
+  transform: scale(1.05);
+}
+
+#topPlayersModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+#topPlayersContent {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+
+#topPlayersContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 28px;
+}
+
+.top-player-item {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 15px 20px;
+  margin: 10px 0;
+  border-radius: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+
+.top-player-item:hover {
+  transform: translateX(5px);
+  background: rgba(255, 255, 255, 1);
+}
+
+.top-player-rank {
+  font-size: 24px;
+  font-weight: bold;
+  width: 40px;
+  text-align: center;
+}
+
+.top-player-rank.first {
+  color: #FFD700;
+}
+
+.top-player-rank.second {
+  color: #C0C0C0;
+}
+
+.top-player-rank.third {
+  color: #CD7F32;
+}
+
+.top-player-info {
+  flex: 1;
+  margin-left: 15px;
+}
+
+.top-player-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.top-player-stats {
+  font-size: 14px;
+  color: #666;
+  margin-top: 3px;
+}
+
+.top-player-xp {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+#closeTopPlayers {
+  display: block;
+  margin: 20px auto 0;
+  padding: 12px 30px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#closeTopPlayers:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.no-players-message {
+  color: white;
+  text-align: center;
+  padding: 20px;
+  font-size: 16px;
+}
+
+/* === Achievements Modal === */
+#achievementsModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+#achievementsContent {
+  background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+
+#achievementsContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 28px;
+}
+
+.achievement-item {
+  background: rgba(255, 255, 255, 0.9);
+  padding: 15px 20px;
+  margin: 10px 0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.achievement-item.unlocked {
+  background: rgba(76, 175, 80, 0.2);
+  border: 2px solid #4CAF50;
+}
+
+.achievement-icon {
+  font-size: 40px;
+  min-width: 50px;
+  text-align: center;
+}
+
+.achievement-info {
+  flex: 1;
+}
+
+.achievement-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.achievement-desc {
+  font-size: 14px;
+  color: #666;
+  margin-top: 3px;
+}
+
+.achievement-reward {
+  font-size: 12px;
+  color: #4CAF50;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.achievement-status {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4CAF50;
+}
+
+.achievement-status.locked {
+  color: #999;
+}
+
+#closeAchievements {
+  display: block;
+  margin: 20px auto 0;
+  padding: 12px 30px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+#closeAchievements:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* === Tutorial Modal === */
+#tutorialModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 15000;
+}
+
+#tutorialContent {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 40px;
+  border-radius: 20px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+  text-align: center;
+}
+
+#tutorialContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  font-size: 32px;
+}
+
+.tutorial-step {
+  display: none;
+  color: white;
+}
+
+.tutorial-step.active {
+  display: block;
+}
+
+.tutorial-icon {
+  font-size: 80px;
+  margin: 20px 0;
+}
+
+.tutorial-text {
+  font-size: 18px;
+  line-height: 1.6;
+  margin: 20px 0;
+}
+
+.tutorial-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  justify-content: center;
+}
+
+.tutorial-button {
+  padding: 15px 30px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.tutorial-button:hover {
+  transform: scale(1.05);
+}
+
+.tutorial-button.primary {
+  background: #4CAF50;
+  color: white;
+}
+
+.tutorial-button.secondary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid white;
+}
+
+.tutorial-progress {
+  color: rgba(255, 255, 255, 0.7);
+  margin-top: 20px;
+  font-size: 14px;
+}
+</style>
+</head>
+<body>
+
+<!-- Mapa principal -->
+<div id="mainMap">
+  <div id="viewport">
+    <div id="world">
+      <div id="map"></div>
+    </div>
+  </div>
+  <button id="gridToggle" onclick="toggleGrid()">Quitar Cuadrícula</button>
+  <button id="logoutButton" onclick="logout()">Cerrar Sesión</button>
+  <button id="dayNightToggle" onclick="toggleDayNight()">🌙</button>
+  <button id="achievementsButton" onclick="openAchievements()">🏆 Logros</button>
+  <button id="topPlayersButton" onclick="openTopPlayers()">🏆 Top Jugadores</button>
+</div>
+
+<!-- Vista de isla -->
+<div id="islandView">
+  <button id="backButton" onclick="backToMap()">← Volver al Mapa</button>
+  <button id="islandGridToggle" onclick="toggleIslandGrid()">Quitar Cuadrícula</button>
+  <button id="islandAchievementsButton" onclick="openAchievements()">🏆 Logros</button>
+  <div id="islandTitle">Aldea de <span id="ownerName"></span></div>
+  
+  <div id="userInfoPanel">
+    <h3 id="userName"></h3>
+    <div id="levelInfo">Nivel: <span id="userLevel">1</span></div>
+    <div id="xpBarContainer">
+      <div id="xpBar"></div>
+      <div id="xpBarText">0 / 100 XP</div>
+    </div>
+  </div>
+  
+  <div id="resourcesPanel">
+    💰<span id="goldAmount">0</span>
+  </div>
+  
+  <button id="shopButton" onclick="openShop()">🛒 Tienda</button>
+  
+  <div id="islandViewport">
+    <div id="islandWorld">
+      <div id="islandContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Tienda -->
+<div id="shopModal">
+  <div id="shopContent">
+    <h2>🛒 Tienda</h2>
+    
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">⛏️ Mina de Oro</div>
+        <div class="shop-item-desc">Genera 10 de oro cada 5 segundos</div>
+        <div class="shop-item-desc">Tienes: <span id="mineCount">0</span> / 2</div>
+        <div class="shop-item-cost">💰 50 Oro</div>
+      </div>
+      <button id="buyMineBtn" onclick="buyMine()">Comprar</button>
+    </div>
+    
+    <button id="closeShop" onclick="closeShop()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal de Top Jugadores -->
+<div id="topPlayersModal">
+  <div id="topPlayersContent">
+    <h2>🏆 Top Jugadores</h2>
+    <div id="topPlayersList"></div>
+    <button id="closeTopPlayers" onclick="closeTopPlayers()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal de Logros -->
+<div id="achievementsModal">
+  <div id="achievementsContent">
+    <h2>🏆 Logros</h2>
+    <div id="achievementsList"></div>
+    <button id="closeAchievements" onclick="closeAchievements()">Cerrar</button>
+  </div>
+</div>
+
+<!-- Modal de Tutorial -->
+<div id="tutorialModal">
+  <div id="tutorialContent">
+    <h2>🎓 Tutorial</h2>
+    <div id="tutorialSteps">
+      <div class="tutorial-step active" data-step="1">
+        <div class="tutorial-icon">👋</div>
+        <div class="tutorial-text">
+          ¡Bienvenido a Aldeas!<br><br>
+          Este es un juego de construcción y estrategia donde podrás crear tu propia aldea y competir con otros jugadores.
+        </div>
+      </div>
+      
+      <div class="tutorial-step" data-step="2">
+        <div class="tutorial-icon">🏰</div>
+        <div class="tutorial-text">
+          Para empezar, haz click en cualquier <strong>celda verde</strong> del mapa para construir tu aldea.<br><br>
+          Solo puedes construir una aldea, ¡así que elige bien la ubicación!
+        </div>
+      </div>
+      
+      <div class="tutorial-step" data-step="3">
+        <div class="tutorial-icon">🏝️</div>
+        <div class="tutorial-text">
+          Una vez construida, haz click en tu castillo para entrar a tu isla.<br><br>
+          Aquí podrás construir edificios y mejorar tu aldea.
+        </div>
+      </div>
+      
+      <div class="tutorial-step" data-step="4">
+        <div class="tutorial-icon">💰</div>
+        <div class="tutorial-text">
+          En la tienda puedes comprar <strong>Minas de Oro</strong> que generan oro cada 5 segundos.<br><br>
+          El oro te permite comprar más edificios y mejorar tu aldea.
+        </div>
+      </div>
+      
+      <div class="tutorial-step" data-step="5">
+        <div class="tutorial-icon">📈</div>
+        <div class="tutorial-text">
+          Gana <strong>XP</strong> construyendo edificios y generando recursos.<br><br>
+          Sube de nivel para desbloquear más contenido y aparecer en el ranking.
+        </div>
+      </div>
+      
+      <div class="tutorial-step" data-step="6">
+        <div class="tutorial-icon">🎮</div>
+        <div class="tutorial-text">
+          ¡Eso es todo!<br><br>
+          Explora el mapa, visita otras aldeas y conviértete en el mejor jugador.<br><br>
+          <strong>¡Buena suerte!</strong>
+        </div>
+      </div>
+    </div>
+    
+    <div class="tutorial-buttons">
+      <button class="tutorial-button secondary" id="tutorialPrev" onclick="prevTutorialStep()">← Anterior</button>
+      <button class="tutorial-button primary" id="tutorialNext" onclick="nextTutorialStep()">Siguiente →</button>
+    </div>
+    
+    <div class="tutorial-progress">
+      Paso <span id="tutorialCurrentStep">1</span> de <span id="tutorialTotalSteps">6</span>
+    </div>
+  </div>
+</div>
+
+<!-- Fade de transición -->
+<div id="fade"></div>
+
+<!-- Loading -->
+<div id="loading">Cargando...</div>
+
+<!-- Login Modal -->
+<div id="loginModal">
+  <div id="loginContent">
+    <h2>🏰 Aldeas</h2>
+    
+    <div class="login-tabs">
+      <button class="tab-button active" onclick="showLoginTab()">Iniciar Sesión</button>
+      <button class="tab-button" onclick="showRegisterTab()">Registrarse</button>
+    </div>
+    
+    <div id="loginForm" class="login-form active">
+      <div class="form-group">
+        <label>Nombre de Usuario</label>
+        <input type="text" id="loginUsername" placeholder="Ingresa tu nombre">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="loginPassword" placeholder="Ingresa tu contraseña">
+      </div>
+      <button class="login-button" onclick="handleLogin()">Entrar</button>
+      <div class="error-message" id="loginError"></div>
+    </div>
+    
+    <div id="registerForm" class="login-form">
+      <div class="form-group">
+        <label>Nombre de Usuario</label>
+        <input type="text" id="registerUsername" placeholder="Elige un nombre">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="registerPassword" placeholder="Elige una contraseña">
+      </div>
+      <div class="form-group">
+        <label>Confirmar Contraseña</label>
+        <input type="password" id="registerPasswordConfirm" placeholder="Confirma tu contraseña">
+      </div>
+      <button class="login-button" onclick="handleRegister()">Crear Cuenta</button>
+      <div class="error-message" id="registerError"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getDatabase, ref, set, onValue, get } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyClTAw_XLfH3UcCKTisTREZchz41tTxL7g",
+  authDomain: "projectmap-382dd.firebaseapp.com",
+  databaseURL: "https://projectmap-382dd-default-rtdb.firebaseio.com",
+  projectId: "projectmap-382dd",
+  storageBucket: "projectmap-382dd.firebasestorage.app",
+  messagingSenderId: "1016267509437",
+  appId: "1:1016267509437:web:fa243dd82b151383ccb1d4",
+  measurementId: "G-4ECYZ37F17"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+const rows = 50;
+const cols = 50;
+const mapEl = document.getElementById('map');
+const world = document.getElementById('world');
+const viewport = document.getElementById('viewport');
+const gridToggleBtn = document.getElementById('gridToggle');
+const mainMap = document.getElementById('mainMap');
+const islandView = document.getElementById('islandView');
+const fade = document.getElementById('fade');
+const islandContainer = document.getElementById('islandContainer');
+const islandViewport = document.getElementById('islandViewport');
+const islandWorld = document.getElementById('islandWorld');
+const ownerNameSpan = document.getElementById('ownerName');
+const islandGridToggleBtn = document.getElementById('islandGridToggle');
+const islandAchievementsButton = document.getElementById('islandAchievementsButton');
+const loading = document.getElementById('loading');
+const goldAmountEl = document.getElementById('goldAmount');
+const resourcesPanel = document.getElementById('resourcesPanel');
+const userInfoPanel = document.getElementById('userInfoPanel');
+const userNameEl = document.getElementById('userName');
+const userLevelEl = document.getElementById('userLevel');
+const xpBar = document.getElementById('xpBar');
+const xpBarText = document.getElementById('xpBarText');
+const shopButton = document.getElementById('shopButton');
+const shopModal = document.getElementById('shopModal');
+const mineCountEl = document.getElementById('mineCount');
+const buyMineBtn = document.getElementById('buyMineBtn');
+const loginModal = document.getElementById('loginModal');
+const loginUsername = document.getElementById('loginUsername');
+const loginPassword = document.getElementById('loginPassword');
+const registerUsername = document.getElementById('registerUsername');
+const registerPassword = document.getElementById('registerPassword');
+const registerPasswordConfirm = document.getElementById('registerPasswordConfirm');
+const loginError = document.getElementById('loginError');
+const registerError = document.getElementById('registerError');
+const topPlayersModal = document.getElementById('topPlayersModal');
+const topPlayersList = document.getElementById('topPlayersList');
+const achievementsModal = document.getElementById('achievementsModal');
+const achievementsList = document.getElementById('achievementsList');
+const tutorialModal = document.getElementById('tutorialModal');
+const dayNightToggle = document.getElementById('dayNightToggle');
+
+let isNightMode = false;
+let currentTutorialStep = 1;
+let achievements = {};
+
+// Definición de logros
+const achievementDefinitions = {
+  firstVillage: {
+    id: 'firstVillage',
+    name: 'Primer Constructor',
+    description: 'Construye tu primera aldea',
+    icon: '🏰',
+    reward: '+50 XP'
+  },
+  firstMine: {
+    id: 'firstMine',
+    name: 'Minero Novato',
+    description: 'Construye tu primera mina de oro',
+    icon: '⛏️',
+    reward: '+25 XP'
+  },
+  level5: {
+    id: 'level5',
+    name: 'Ascenso',
+    description: 'Alcanza el nivel 5',
+    icon: '⭐',
+    reward: '+100 Oro'
+  },
+  level10: {
+    id: 'level10',
+    name: 'Veterano',
+    description: 'Alcanza el nivel 10',
+    icon: '🌟',
+    reward: '+200 Oro'
+  },
+  rich: {
+    id: 'rich',
+    name: 'Rico',
+    description: 'Acumula 500 de oro',
+    icon: '💰',
+    reward: '+50 XP'
+  },
+  millionaire: {
+    id: 'millionaire',
+    name: 'Millonario',
+    description: 'Acumula 1000 de oro',
+    icon: '💎',
+    reward: '+100 XP'
+  },
+  maxMines: {
+    id: 'maxMines',
+    name: 'Imperio Minero',
+    description: 'Construye el máximo de minas (2)',
+    icon: '⚒️',
+    reward: '+50 XP'
+  },
+  explorer: {
+    id: 'explorer',
+    name: 'Explorador',
+    description: 'Visita la aldea de otro jugador',
+    icon: '🗺️',
+    reward: '+25 XP'
+  }
+};
+
+let gridVisible = true;
+let islandGridVisible = true;
+let userName = null;
+let userHasBuilt = false;
+let currentVillageOwner = null;
+let currentGold = 0;
+let goldMines = [];
+let userLevel = 1;
+let userXP = 0;
+let xpNeeded = 100;
+let isPlacingMine = false;
+
+// Variables para la isla
+let islandDragging = false;
+let islandHasDragged = false;
+let islandStartX, islandStartY;
+let islandTranslateX = 0;
+let islandTranslateY = 0;
+let islandScale = 1;
+
+// Verificar si hay sesión guardada
+function checkSession() {
+  const savedUser = localStorage.getItem('currentUser');
+  const tutorialCompleted = localStorage.getItem('tutorialCompleted');
+  
+  if (savedUser) {
+    userName = savedUser;
+    loginModal.style.display = 'none';
+    checkIfUserHasBuilt();
+    loadAchievements();
+    
+    // Mostrar tutorial si es primera vez
+    if (!tutorialCompleted) {
+      setTimeout(() => {
+        tutorialModal.style.display = 'flex';
+      }, 500);
+    }
+  }
+}
+
+// Verificar si el usuario ya construyó
+async function checkIfUserHasBuilt() {
+  const villagesRef = ref(db, 'villages');
+  const snapshot = await get(villagesRef);
+  if (snapshot.exists()) {
+    const villages = snapshot.val();
+    Object.keys(villages).forEach(key => {
+      if (villages[key].owner === userName) {
+        userHasBuilt = true;
+      }
+    });
+  }
+}
+
+// Funciones de login/registro
+window.showLoginTab = function() {
+  document.querySelectorAll('.tab-button')[0].classList.add('active');
+  document.querySelectorAll('.tab-button')[1].classList.remove('active');
+  document.getElementById('loginForm').classList.add('active');
+  document.getElementById('registerForm').classList.remove('active');
+  loginError.style.display = 'none';
+  registerError.style.display = 'none';
+}
+
+window.showRegisterTab = function() {
+  document.querySelectorAll('.tab-button')[1].classList.add('active');
+  document.querySelectorAll('.tab-button')[0].classList.remove('active');
+  document.getElementById('registerForm').classList.add('active');
+  document.getElementById('loginForm').classList.remove('active');
+  loginError.style.display = 'none';
+  registerError.style.display = 'none';
+}
+
+window.handleLogin = async function() {
+  const username = loginUsername.value.trim();
+  const password = loginPassword.value;
+  
+  if (!username || !password) {
+    loginError.textContent = 'Por favor completa todos los campos';
+    loginError.style.display = 'block';
+    return;
+  }
+  
+  showLoading();
+  
+  try {
+    const userRef = ref(db, `accounts/${username}`);
+    const snapshot = await get(userRef);
+    
+    if (!snapshot.exists()) {
+      loginError.textContent = 'Usuario no encontrado';
+      loginError.style.display = 'block';
+      hideLoading();
+      return;
+    }
+    
+    const userData = snapshot.val();
+    if (userData.password !== password) {
+      loginError.textContent = 'Contraseña incorrecta';
+      loginError.style.display = 'block';
+      hideLoading();
+      return;
+    }
+    
+    // Login exitoso
+    userName = username;
+    localStorage.setItem('currentUser', userName);
+    loginModal.style.display = 'none';
+    await checkIfUserHasBuilt();
+    await loadAchievements();
+    
+    // Mostrar tutorial si es primera vez
+    const tutorialCompleted = localStorage.getItem('tutorialCompleted');
+    if (!tutorialCompleted) {
+      setTimeout(() => {
+        tutorialModal.style.display = 'flex';
+      }, 500);
+    }
+    
+    hideLoading();
+  } catch (error) {
+    console.error('Error en login:', error);
+    loginError.textContent = 'Error al iniciar sesión';
+    loginError.style.display = 'block';
+    hideLoading();
+  }
+}
+
+window.handleRegister = async function() {
+  const username = registerUsername.value.trim();
+  const password = registerPassword.value;
+  const passwordConfirm = registerPasswordConfirm.value;
+  
+  if (!username || !password || !passwordConfirm) {
+    registerError.textContent = 'Por favor completa todos los campos';
+    registerError.style.display = 'block';
+    return;
+  }
+  
+  if (username.length < 3) {
+    registerError.textContent = 'El nombre debe tener al menos 3 caracteres';
+    registerError.style.display = 'block';
+    return;
+  }
+  
+  if (password.length < 6) {
+    registerError.textContent = 'La contraseña debe tener al menos 6 caracteres';
+    registerError.style.display = 'block';
+    return;
+  }
+  
+  if (password !== passwordConfirm) {
+    registerError.textContent = 'Las contraseñas no coinciden';
+    registerError.style.display = 'block';
+    return;
+  }
+  
+  showLoading();
+  
+  try {
+    const userRef = ref(db, `accounts/${username}`);
+    const snapshot = await get(userRef);
+    
+    if (snapshot.exists()) {
+      registerError.textContent = 'Este nombre de usuario ya existe';
+      registerError.style.display = 'block';
+      hideLoading();
+      return;
+    }
+    
+    // Crear cuenta
+    await set(ref(db, `accounts/${username}`), {
+      password: password,
+      createdAt: Date.now()
+    });
+    
+    // Login automático
+    userName = username;
+    localStorage.setItem('currentUser', userName);
+    loginModal.style.display = 'none';
+    hideLoading();
+    
+    alert('¡Cuenta creada exitosamente!');
+    
+    // Mostrar tutorial para nuevos usuarios
+    setTimeout(() => {
+      tutorialModal.style.display = 'flex';
+    }, 500);
+  } catch (error) {
+    console.error('Error en registro:', error);
+    registerError.textContent = 'Error al crear la cuenta';
+    registerError.style.display = 'block';
+    hideLoading();
+  }
+}
+
+window.logout = function() {
+  if (confirm('¿Seguro que quieres cerrar sesión?')) {
+    localStorage.removeItem('currentUser');
+    location.reload();
+  }
+}
+
+// Modo Día/Noche
+window.toggleDayNight = function() {
+  isNightMode = !isNightMode;
+  document.body.classList.toggle('night-mode');
+  dayNightToggle.textContent = isNightMode ? '☀️' : '🌙';
+}
+
+// Sistema de Logros
+async function loadAchievements() {
+  if (!userName) return;
+  
+  const achievementsRef = ref(db, `users/${userName}/achievements`);
+  const snapshot = await get(achievementsRef);
+  
+  if (snapshot.exists()) {
+    achievements = snapshot.val();
+  } else {
+    achievements = {};
+  }
+}
+
+async function unlockAchievement(achievementId) {
+  if (!userName || achievements[achievementId]) return;
+  
+  achievements[achievementId] = true;
+  await set(ref(db, `users/${userName}/achievements/${achievementId}`), true);
+  
+  const achievement = achievementDefinitions[achievementId];
+  if (achievement) {
+    // Mostrar notificación
+    alert(`🏆 ¡Logro Desbloqueado!\n${achievement.name}\n${achievement.description}\nRecompensa: ${achievement.reward}`);
+    
+    // Dar recompensa
+    if (achievement.reward.includes('XP')) {
+      const xpAmount = parseInt(achievement.reward.match(/\d+/)[0]);
+      await addXP(xpAmount);
+    } else if (achievement.reward.includes('Oro')) {
+      const goldAmount = parseInt(achievement.reward.match(/\d+/)[0]);
+      currentGold += goldAmount;
+      await set(ref(db, `users/${userName}/resources`), { gold: currentGold });
+      updateResourcesDisplay();
+    }
+  }
+}
+
+async function checkAchievements() {
+  if (!userName) return;
+  
+  // Verificar logro de nivel 5
+  if (userLevel >= 5 && !achievements.level5) {
+    await unlockAchievement('level5');
+  }
+  
+  // Verificar logro de nivel 10
+  if (userLevel >= 10 && !achievements.level10) {
+    await unlockAchievement('level10');
+  }
+  
+  // Verificar logro de rico
+  if (currentGold >= 500 && !achievements.rich) {
+    await unlockAchievement('rich');
+  }
+  
+  // Verificar logro de millonario
+  if (currentGold >= 1000 && !achievements.millionaire) {
+    await unlockAchievement('millionaire');
+  }
+  
+  // Verificar logro de minas máximas
+  if (goldMines.length >= 2 && !achievements.maxMines) {
+    await unlockAchievement('maxMines');
+  }
+}
+
+window.openAchievements = async function() {
+  achievementsModal.style.display = 'flex';
+  await loadAchievements();
+  
+  achievementsList.innerHTML = '';
+  
+  for (let key in achievementDefinitions) {
+    const achievement = achievementDefinitions[key];
+    const isUnlocked = achievements[achievement.id];
+    
+    const achievementItem = document.createElement('div');
+    achievementItem.className = `achievement-item ${isUnlocked ? 'unlocked' : ''}`;
+    
+    achievementItem.innerHTML = `
+      <div class="achievement-icon">${achievement.icon}</div>
+      <div class="achievement-info">
+        <div class="achievement-name">${achievement.name}</div>
+        <div class="achievement-desc">${achievement.description}</div>
+        <div class="achievement-reward">Recompensa: ${achievement.reward}</div>
+      </div>
+      <div class="achievement-status ${isUnlocked ? '' : 'locked'}">
+        ${isUnlocked ? '✅' : '🔒'}
+      </div>
+    `;
+    
+    achievementsList.appendChild(achievementItem);
+  }
+}
+
+window.closeAchievements = function() {
+  achievementsModal.style.display = 'none';
+}
+
+// Sistema de Tutorial
+window.nextTutorialStep = function() {
+  if (currentTutorialStep < 6) {
+    document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.remove('active');
+    currentTutorialStep++;
+    document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.add('active');
+    document.getElementById('tutorialCurrentStep').textContent = currentTutorialStep;
+    
+    document.getElementById('tutorialPrev').style.display = 'block';
+    
+    if (currentTutorialStep === 6) {
+      document.getElementById('tutorialNext').textContent = '¡Empezar!';
+    }
+  } else {
+    // Terminar tutorial
+    tutorialModal.style.display = 'none';
+    localStorage.setItem('tutorialCompleted', 'true');
+    currentTutorialStep = 1;
+  }
+}
+
+window.prevTutorialStep = function() {
+  if (currentTutorialStep > 1) {
+    document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.remove('active');
+    currentTutorialStep--;
+    document.querySelector(`.tutorial-step[data-step="${currentTutorialStep}"]`).classList.add('active');
+    document.getElementById('tutorialCurrentStep').textContent = currentTutorialStep;
+    
+    if (currentTutorialStep === 1) {
+      document.getElementById('tutorialPrev').style.display = 'none';
+    }
+    
+    document.getElementById('tutorialNext').textContent = 'Siguiente →';
+  }
+}
+
+// Funciones del Top de Jugadores
+window.openTopPlayers = async function() {
+  showLoading();
+  topPlayersModal.style.display = 'flex';
+  
+  try {
+    // Obtener todos los usuarios con nivel
+    const usersRef = ref(db, 'users');
+    const snapshot = await get(usersRef);
+    
+    if (!snapshot.exists()) {
+      topPlayersList.innerHTML = '<div class="no-players-message">No hay jugadores todavía</div>';
+      hideLoading();
+      return;
+    }
+    
+    const users = snapshot.val();
+    const playersArray = [];
+    
+    // Convertir a array y calcular XP total
+    for (let username in users) {
+      if (users[username].level) {
+        const levelData = users[username].level;
+        const level = levelData.level || 1;
+        const xp = levelData.xp || 0;
+        // XP total = XP de niveles completados + XP actual
+        const totalXP = ((level - 1) * level * 100 / 2) + xp;
+        
+        playersArray.push({
+          username: username,
+          level: level,
+          xp: xp,
+          totalXP: totalXP
+        });
+      }
+    }
+    
+    // Ordenar por XP total
+    playersArray.sort((a, b) => b.totalXP - a.totalXP);
+    
+    // Mostrar top 10
+    topPlayersList.innerHTML = '';
+    const top10 = playersArray.slice(0, 10);
+    
+    if (top10.length === 0) {
+      topPlayersList.innerHTML = '<div class="no-players-message">No hay jugadores todavía</div>';
+    } else {
+      top10.forEach((player, index) => {
+        const rank = index + 1;
+        const rankClass = rank === 1 ? 'first' : rank === 2 ? 'second' : rank === 3 ? 'third' : '';
+        
+        const playerItem = document.createElement('div');
+        playerItem.className = 'top-player-item';
+        playerItem.onclick = () => visitPlayerVillage(player.username);
+        
+        playerItem.innerHTML = `
+          <div class="top-player-rank ${rankClass}">${rank}</div>
+          <div class="top-player-info">
+            <div class="top-player-name">${player.username}</div>
+            <div class="top-player-stats">Nivel ${player.level}</div>
+          </div>
+          <div class="top-player-xp">${Math.floor(player.totalXP)} XP</div>
+        `;
+        
+        topPlayersList.appendChild(playerItem);
+      });
+    }
+    
+    hideLoading();
+  } catch (error) {
+    console.error('Error cargando top jugadores:', error);
+    topPlayersList.innerHTML = '<div class="no-players-message">Error al cargar el ranking</div>';
+    hideLoading();
+  }
+}
+
+window.closeTopPlayers = function() {
+  topPlayersModal.style.display = 'none';
+}
+
+async function visitPlayerVillage(username) {
+  closeTopPlayers();
+  showLoading();
+  
+  try {
+    // Buscar la aldea del jugador
+    const villagesRef = ref(db, 'villages');
+    const snapshot = await get(villagesRef);
+    
+    if (snapshot.exists()) {
+      const villages = snapshot.val();
+      let found = false;
+      
+      for (let key in villages) {
+        if (villages[key].owner === username) {
+          found = true;
+          // Abrir la isla del jugador
+          openIsland(username);
+          break;
+        }
+      }
+      
+      if (!found) {
+        alert(`${username} aún no ha construido su aldea`);
+      }
+    } else {
+      alert(`${username} aún no ha construido su aldea`);
+    }
+    
+    hideLoading();
+  } catch (error) {
+    console.error('Error buscando aldea:', error);
+    alert('Error al buscar la aldea del jugador');
+    hideLoading();
+  }
+}
+
+// Crear mapa con bordes
+let map = [];
+let cellElements = {};
+
+function showLoading() {
+  loading.style.display = 'block';
+}
+
+function hideLoading() {
+  loading.style.display = 'none';
+}
+
+// Crear el grid del mapa
+for (let r = 0; r < rows; r++) {
+  map[r] = [];
+  for (let c = 0; c < cols; c++) {
+    let terrain;
+    
+    if (r === 0 || r === rows - 1 || c === 0 || c === cols - 1) {
+      terrain = 'wall';
+    }
+    else if (r % 10 === 0 || c % 10 === 0) {
+      terrain = 'road';
+    }
+    else if (Math.random() < 0.05) {
+      terrain = 'mountain';
+    }
+    else {
+      terrain = 'grass';
+    }
+    
+    map[r][c] = { terrain, building: null, owner: null };
+    
+    const cell = document.createElement('div');
+    cell.classList.add('cell', terrain);
+    cell.dataset.row = r;
+    cell.dataset.col = c;
+    cell.addEventListener('click', () => handleCellClick(cell));
+    
+    cellElements[`${r}-${c}`] = cell;
+    mapEl.appendChild(cell);
+  }
+}
+
+// Cargar aldeas desde Firebase
+showLoading();
+const villagesRef = ref(db, 'villages');
+onValue(villagesRef, (snapshot) => {
+  const data = snapshot.val();
+  if (data) {
+    Object.keys(data).forEach(key => {
+      const village = data[key];
+      const r = village.row;
+      const c = village.col;
+      const owner = village.owner;
+      
+      if (map[r] && map[r][c]) {
+        map[r][c].building = 'house';
+        map[r][c].owner = owner;
+        
+        const cell = cellElements[`${r}-${c}`];
+        if (cell) {
+          cell.classList.add('building');
+          cell.textContent = '🏰';
+          
+          const nameLabel = document.createElement('div');
+          nameLabel.className = 'owner-name';
+          nameLabel.textContent = owner;
+          cell.appendChild(nameLabel);
+        }
+      }
+    });
+  }
+  hideLoading();
+});
+
+// Cargar recursos del usuario cuando entra a su isla
+async function loadUserResources(owner) {
+  const userResourcesRef = ref(db, `users/${owner}/resources`);
+  const snapshot = await get(userResourcesRef);
+  if (snapshot.exists()) {
+    const resources = snapshot.val();
+    currentGold = resources.gold || 0;
+  } else {
+    currentGold = 100; // Oro inicial
+    await set(ref(db, `users/${owner}/resources`), { gold: currentGold });
+  }
+  updateResourcesDisplay();
+}
+
+// Cargar nivel y XP del usuario
+async function loadUserLevel(owner) {
+  const userLevelRef = ref(db, `users/${owner}/level`);
+  const snapshot = await get(userLevelRef);
+  if (snapshot.exists()) {
+    const levelData = snapshot.val();
+    userLevel = levelData.level || 1;
+    userXP = levelData.xp || 0;
+    xpNeeded = userLevel * 100;
+  } else {
+    userLevel = 1;
+    userXP = 0;
+    xpNeeded = 100;
+    await set(ref(db, `users/${owner}/level`), { level: userLevel, xp: userXP });
+  }
+  updateLevelDisplay();
+}
+
+// Cargar edificios de la isla
+async function loadIslandBuildings(owner) {
+  const buildingsRef = ref(db, `users/${owner}/buildings`);
+  const snapshot = await get(buildingsRef);
+  goldMines = [];
+  if (snapshot.exists()) {
+    const buildings = snapshot.val();
+    goldMines = buildings.goldMines || [];
+  }
+  updateShopUI();
+}
+
+function updateResourcesDisplay() {
+  goldAmountEl.textContent = currentGold;
+}
+
+function updateLevelDisplay() {
+  userNameEl.textContent = currentVillageOwner;
+  userLevelEl.textContent = userLevel;
+  const xpPercent = (userXP / xpNeeded) * 100;
+  xpBar.style.width = xpPercent + '%';
+  xpBarText.textContent = `${userXP} / ${xpNeeded} XP`;
+}
+
+function updateShopUI() {
+  mineCountEl.textContent = goldMines.length;
+  if (goldMines.length >= 2) {
+    buyMineBtn.disabled = true;
+    buyMineBtn.textContent = 'Máximo alcanzado';
+  } else {
+    buyMineBtn.disabled = false;
+    buyMineBtn.textContent = 'Comprar';
+  }
+}
+
+async function addXP(amount) {
+  userXP += amount;
+  
+  // Verificar si subió de nivel
+  while (userXP >= xpNeeded) {
+    userXP -= xpNeeded;
+    userLevel++;
+    xpNeeded = userLevel * 100;
+    alert(`¡Felicidades! Subiste al nivel ${userLevel}`);
+  }
+  
+  await set(ref(db, `users/${currentVillageOwner}/level`), { level: userLevel, xp: userXP });
+  updateLevelDisplay();
+}
+
+async function handleCellClick(cell) {
+  if (hasDragged) return;
+  
+  const r = cell.dataset.row;
+  const c = cell.dataset.col;
+  
+  if (map[r][c].building === 'house') {
+    openIsland(map[r][c].owner);
+    return;
+  }
+  
+  build(cell);
+}
+
+async function build(cell) {
+  const r = parseInt(cell.dataset.row);
+  const c = parseInt(cell.dataset.col);
+  
+  if (userHasBuilt) {
+    alert('Ya has colocado tu aldea. Solo puedes construir una aldea.');
+    return;
+  }
+  
+  if (map[r][c].terrain !== 'grass' || map[r][c].building) return;
+  
+  if (!userName) {
+    alert('Error: No has iniciado sesión');
+    return;
+  }
+  
+  showLoading();
+  
+  try {
+    // Guardar en Firebase
+    const villageId = `${r}-${c}`;
+    await set(ref(db, 'villages/' + villageId), {
+      row: r,
+      col: c,
+      owner: userName,
+      timestamp: Date.now()
+    });
+    
+    map[r][c].building = 'house';
+    map[r][c].owner = userName;
+    cell.classList.add('building');
+    cell.textContent = '🏰';
+    
+    const nameLabel = document.createElement('div');
+    nameLabel.className = 'owner-name';
+    nameLabel.textContent = userName;
+    cell.appendChild(nameLabel);
+    
+    userHasBuilt = true;
+    
+    // Desbloquear logro de primera aldea
+    await unlockAchievement('firstVillage');
+  } catch (error) {
+    console.error('Error guardando aldea:', error);
+    alert('Error al guardar la aldea. Intenta de nuevo.');
+  }
+  
+  hideLoading();
+}
+
+function openIsland(owner) {
+  currentVillageOwner = owner;
+  ownerNameSpan.textContent = owner;
+  
+  // Verificar si está visitando la aldea de otro jugador
+  if (owner !== userName && userName) {
+    unlockAchievement('explorer');
+  }
+  
+  // Cargar recursos, nivel y edificios
+  loadUserResources(owner);
+  loadUserLevel(owner);
+  loadIslandBuildings(owner);
+  
+  islandContainer.innerHTML = '';
+  
+  for (let r = 0; r < 20; r++) {
+    for (let c = 0; c < 20; c++) {
+      const islandCell = document.createElement('div');
+      islandCell.classList.add('island-cell');
+      islandCell.dataset.row = r;
+      islandCell.dataset.col = c;
+      
+      if (r === 10 && c === 10) {
+        islandCell.classList.add('center');
+        islandCell.textContent = '🏰';
+      } else {
+        // Permitir construcción solo en la propia isla
+        if (owner === userName) {
+          islandCell.addEventListener('click', () => handleIslandCellClick(islandCell));
+        }
+      }
+      
+      islandContainer.appendChild(islandCell);
+    }
+  }
+  
+  // Cargar minas de oro existentes
+  setTimeout(() => {
+    goldMines.forEach(mine => {
+      const cell = islandContainer.querySelector(`[data-row="${mine.row}"][data-col="${mine.col}"]`);
+      if (cell) {
+        cell.classList.add('gold-mine');
+        cell.textContent = '⛏️';
+      }
+    });
+  }, 100);
+  
+  islandTranslateX = 0;
+  islandTranslateY = 0;
+  islandScale = 1;
+  
+  fade.style.opacity = 1;
+  
+  setTimeout(() => {
+    mainMap.style.opacity = 0;
+    islandView.style.opacity = 1;
+    islandView.style.pointerEvents = 'auto';
+    islandGridToggleBtn.style.opacity = 1;
+    islandGridToggleBtn.style.pointerEvents = 'auto';
+    islandAchievementsButton.style.opacity = 1;
+    islandAchievementsButton.style.pointerEvents = 'auto';
+    resourcesPanel.style.display = 'block';
+    userInfoPanel.style.display = 'block';
+    
+    // Mostrar botón de tienda solo si es tu isla
+    if (owner === userName) {
+      shopButton.style.display = 'block';
+    }
+    
+    setTimeout(() => {
+      islandTranslateX = (islandViewport.clientWidth - islandContainer.offsetWidth) / 2;
+      islandTranslateY = (islandViewport.clientHeight - islandContainer.offsetHeight) / 2;
+      updateIslandTransform();
+    }, 50);
+  }, 400);
+  
+  setTimeout(() => {
+    fade.style.opacity = 0;
+  }, 900);
+}
+
+async function handleIslandCellClick(cell) {
+  if (islandHasDragged) return;
+  
+  // Si está en modo de colocar mina desde la tienda
+  if (isPlacingMine) {
+    const r = parseInt(cell.dataset.row);
+    const c = parseInt(cell.dataset.col);
+    
+    // No construir en el centro
+    if (r === 10 && c === 10) {
+      alert('No puedes construir en el castillo');
+      return;
+    }
+    
+    // Verificar si ya hay algo construido
+    if (cell.classList.contains('gold-mine')) {
+      alert('Ya hay una mina aquí');
+      return;
+    }
+    
+    showLoading();
+    
+    try {
+      // Guardar mina
+      goldMines.push({ row: r, col: c });
+      await set(ref(db, `users/${currentVillageOwner}/buildings`), { goldMines });
+      
+      // Actualizar visualmente
+      cell.classList.add('gold-mine');
+      cell.textContent = '⛏️';
+      
+      // Dar XP por construir
+      await addXP(25);
+      
+      isPlacingMine = false;
+      updateShopUI();
+      
+      // Iniciar generación de oro
+      startGoldGeneration();
+      
+      // Verificar logro de primera mina
+      if (goldMines.length === 1) {
+        await unlockAchievement('firstMine');
+      }
+      
+      alert('¡Mina construida! +25 XP');
+    } catch (error) {
+      console.error('Error construyendo mina:', error);
+      alert('Error al construir la mina.');
+    }
+    
+    hideLoading();
+  }
+}
+
+// Funciones de la tienda
+window.openShop = function() {
+  shopModal.style.display = 'flex';
+  updateShopUI();
+}
+
+window.closeShop = function() {
+  shopModal.style.display = 'none';
+}
+
+window.buyMine = async function() {
+  // Verificar límite
+  if (goldMines.length >= 2) {
+    alert('Ya tienes el máximo de minas (2)');
+    return;
+  }
+  
+  // Verificar oro
+  const mineCost = 50;
+  if (currentGold < mineCost) {
+    alert(`Necesitas ${mineCost} de oro. Tienes ${currentGold}.`);
+    return;
+  }
+  
+  // Descontar oro
+  currentGold -= mineCost;
+  await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold });
+  updateResourcesDisplay();
+  
+  // Activar modo de colocación
+  isPlacingMine = true;
+  closeShop();
+  alert('Haz click en una celda verde para colocar la mina');
+}
+
+// Generar oro cada 5 segundos
+let goldInterval = null;
+function startGoldGeneration() {
+  if (goldInterval) return;
+  
+  goldInterval = setInterval(async () => {
+    if (currentVillageOwner === userName && goldMines.length > 0) {
+      const goldPerMine = 10;
+      const totalGold = goldMines.length * goldPerMine;
+      currentGold += totalGold;
+      
+      await set(ref(db, `users/${userName}/resources`), { gold: currentGold });
+      updateResourcesDisplay();
+      
+      // Ganar 1 XP por cada generación
+      await addXP(1);
+      
+      // Verificar logros relacionados con oro
+      await checkAchievements();
+    }
+  }, 5000); // Cada 5 segundos
+}
+
+function backToMap() {
+  fade.style.opacity = 1;
+  
+  // Detener generación de oro
+  if (goldInterval) {
+    clearInterval(goldInterval);
+    goldInterval = null;
+  }
+  
+  isPlacingMine = false;
+  
+  setTimeout(() => {
+    islandView.style.opacity = 0;
+    islandView.style.pointerEvents = 'none';
+    islandGridToggleBtn.style.opacity = 0;
+    islandGridToggleBtn.style.pointerEvents = 'none';
+    islandAchievementsButton.style.opacity = 0;
+    islandAchievementsButton.style.pointerEvents = 'none';
+    resourcesPanel.style.display = 'none';
+    userInfoPanel.style.display = 'none';
+    shopButton.style.display = 'none';
+    mainMap.style.opacity = 1;
+  }, 400);
+  
+  setTimeout(() => {
+    fade.style.opacity = 0;
+  }, 900);
+}
+
+window.toggleGrid = function() {
+  gridVisible = !gridVisible;
+  if (gridVisible) {
+    mapEl.classList.remove('no-grid');
+    gridToggleBtn.textContent = 'Quitar Cuadrícula';
+  } else {
+    mapEl.classList.add('no-grid');
+    gridToggleBtn.textContent = 'Mostrar Cuadrícula';
+  }
+}
+
+window.toggleIslandGrid = function() {
+  islandGridVisible = !islandGridVisible;
+  if (islandGridVisible) {
+    islandContainer.classList.remove('no-grid');
+    islandGridToggleBtn.textContent = 'Quitar Cuadrícula';
+  } else {
+    islandContainer.classList.add('no-grid');
+    islandGridToggleBtn.textContent = 'Mostrar Cuadrícula';
+  }
+}
+
+window.backToMap = backToMap;
+
+// Variables de estado para drag del mapa principal
+let isDragging = false;
+let hasDragged = false;
+let startX, startY;
+let translateX = 0;
+let translateY = 0;
+let scale = 1;
+
+function updateTransform() {
+  world.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+}
+
+function updateIslandTransform() {
+  islandWorld.style.transform = `translate(${islandTranslateX}px, ${islandTranslateY}px) scale(${islandScale})`;
+}
+
+// === Controles del mapa principal ===
+viewport.addEventListener('mousedown', e => {
+  if (e.target === viewport || e.target === world || e.target.classList.contains('cell')) {
+    isDragging = true;
+    hasDragged = false;
+    startX = e.clientX - translateX;
+    startY = e.clientY - translateY;
+    viewport.style.cursor = 'grabbing';
+  }
+});
+
+viewport.addEventListener('mouseup', () => {
+  isDragging = false;
+  viewport.style.cursor = 'grab';
+});
+
+viewport.addEventListener('mouseleave', () => {
+  isDragging = false;
+  viewport.style.cursor = 'grab';
+});
+
+viewport.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  e.preventDefault();
+  
+  const deltaX = Math.abs(e.clientX - startX - translateX);
+  const deltaY = Math.abs(e.clientY - startY - translateY);
+  
+  if (deltaX > 3 || deltaY > 3) {
+    hasDragged = true;
+  }
+  
+  translateX = e.clientX - startX;
+  translateY = e.clientY - startY;
+  updateTransform();
+});
+
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  
+  const rect = viewport.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+  
+  const beforeX = (mouseX - translateX) / scale;
+  const beforeY = (mouseY - translateY) / scale;
+  
+  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+  const newScale = Math.min(Math.max(scale + delta, 0.3), 3);
+  
+  const afterX = (mouseX - translateX) / newScale;
+  const afterY = (mouseY - translateY) / newScale;
+  
+  translateX += (afterX - beforeX) * newScale;
+  translateY += (afterY - beforeY) * newScale;
+  
+  scale = newScale;
+  updateTransform();
+});
+
+// === Controles de la isla ===
+islandViewport.addEventListener('mousedown', e => {
+  if (e.target === islandViewport || e.target === islandWorld || e.target.classList.contains('island-cell')) {
+    islandDragging = true;
+    islandHasDragged = false;
+    islandStartX = e.clientX - islandTranslateX;
+    islandStartY = e.clientY - islandTranslateY;
+    islandViewport.style.cursor = 'grabbing';
+  }
+});
+
+islandViewport.addEventListener('mouseup', () => {
+  islandDragging = false;
+  islandViewport.style.cursor = 'grab';
+});
+
+islandViewport.addEventListener('mouseleave', () => {
+  islandDragging = false;
+  islandViewport.style.cursor = 'grab';
+});
+
+islandViewport.addEventListener('mousemove', e => {
+  if (!islandDragging) return;
+  e.preventDefault();
+  
+  const deltaX = Math.abs(e.clientX - islandStartX - islandTranslateX);
+  const deltaY = Math.abs(e.clientY - islandStartY - islandTranslateY);
+  
+  if (deltaX > 3 || deltaY > 3) {
+    islandHasDragged = true;
+  }
+  
+  islandTranslateX = e.clientX - islandStartX;
+  islandTranslateY = e.clientY - islandStartY;
+  updateIslandTransform();
+});
+
+islandViewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  
+  const rect = islandViewport.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+  
+  const beforeX = (mouseX - islandTranslateX) / islandScale;
+  const beforeY = (mouseY - islandTranslateY) / islandScale;
+  
+  const delta = e.deltaY < 0 ? 0.1 : -0.1;
+  const newScale = Math.min(Math.max(islandScale + delta, 0.3), 3);
+  
+  const afterX = (mouseX - islandTranslateX) / newScale;
+  const afterY = (mouseY - islandTranslateY) / newScale;
+  
+  islandTranslateX += (afterX - beforeX) * newScale;
+  islandTranslateY += (afterY - beforeY) * newScale;
+  
+  islandScale = newScale;
+  updateIslandTransform();
+});
+
+window.addEventListener('load', () => {
+  translateX = (viewport.clientWidth - mapEl.offsetWidth) / 2;
+  translateY = (viewport.clientHeight - mapEl.offsetHeight) / 2;
+  updateTransform();
+  checkSession();
+});
+
+updateTransform();
+</script>
+</body>
+</html>
