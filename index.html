@@ -2105,13 +2105,18 @@ $('buyDeflectorTowerBtn').onclick = async () => {
   
   if (!result.committed) return alert('Error al comprar. Intenta de nuevo.');
   
-  // Deducir oro y agregar al inventario
+  // Deducir oro
   state.resources.gold -= 1500;
   await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
   
-  // Agregar a inventario
-  state.inventory.push('deflectorTower');
-  await set(ref(db, `users/${state.user}/inventory`), state.inventory);
+  // Cargar inventario actual y agregar torre
+  const inventorySnap = await get(ref(db, `users/${state.user}/inventory/items`));
+  const currentInventory = inventorySnap.exists() ? inventorySnap.val() : [];
+  currentInventory.push('deflectorTower');
+  
+  // Guardar inventario actualizado
+  await set(ref(db, `users/${state.user}/inventory/items`), currentInventory);
+  state.inventory = currentInventory;
   
   updateUI();
   hide(modal('globalShop'));
@@ -2870,6 +2875,8 @@ $('globalShopButton').onclick = async () => {
   $('buyRocketAmmoBtn').textContent = rocketAmmoStock <= 0 ? 'Agotado' : 'Comprar';
   $('buyFlowerBtn').disabled = flowerStock <= 0;
   $('buyFlowerBtn').textContent = flowerStock <= 0 ? 'Agotado' : 'Comprar';
+  $('buyDeflectorTowerBtn').disabled = deflectorTowerStock <= 0;
+  $('buyDeflectorTowerBtn').textContent = deflectorTowerStock <= 0 ? 'Agotado' : 'Comprar';
 };
 // Drag & Zoom
 function setupDrag(viewport, world, view) {
