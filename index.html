@@ -1182,6 +1182,16 @@ async function buildDeflectorTower(r, c, cell) {
   cell.classList.add('deflector-tower');
   cell.textContent = '🛡️';
   await addXP(75);
+  
+  // Eliminar del inventario
+  const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
+  const towerIndex = items.indexOf('deflectorTower');
+  if (towerIndex !== -1) {
+    items.splice(towerIndex, 1);
+    await set(ref(db, `users/${state.user}/inventory/items`), items);
+    state.inventory = items;
+  }
+  
   state.placing = null;
   updateShop();
   if (state.buildings.deflectorTowers.length === 1) await unlockAchievement('deflectorTower');
