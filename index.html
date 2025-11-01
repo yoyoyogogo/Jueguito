@@ -193,12 +193,14 @@ body.night-mode .damaged { background-color: #5d2e0b; }
 body.night-mode .center { background-color: #5d2e0b; }
 .particula {
   position: absolute;
-  width: 4px;
-  height: 4px;
+  width: 8px;
+  height: 8px;
   background: red;
   border-radius: 50%;
   opacity: 1;
   animation: subir 1.5s linear forwards;
+  box-shadow: 0 0 10px rgba(255, 0, 0, 0.8), 0 0 20px rgba(255, 100, 0, 0.6);
+  filter: brightness(1.5);
 }
 @keyframes subir {
   0% {
@@ -206,7 +208,7 @@ body.night-mode .center { background-color: #5d2e0b; }
     opacity: 1;
   }
   100% {
-    transform: translateY(-60px) scale(0.3);
+    transform: translateY(-80px) scale(0.5);
     opacity: 0;
   }
 }
@@ -719,7 +721,7 @@ body.night-mode .center { background-color: #5d2e0b; }
     <div class="shop-item">
       <div class="shop-item-info">
         <div class="shop-item-name">🛡️ Torre Desviadora</div>
-        <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 3 celdas)</div>
+        <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 5 celdas)</div>
         <div class="shop-item-desc">Stock: <span id="deflectorTowerStock">5</span></div>
         <div class="shop-item-cost">💰 1500 Oro</div>
       </div>
@@ -785,6 +787,15 @@ body.night-mode .center { background-color: #5d2e0b; }
       <button class="tutorial-button primary" id="tutorialNext">Siguiente →</button>
     </div>
     <div class="tutorial-progress">Paso <span id="tutorialCurrentStep">1</span> de <span id="tutorialTotalSteps">6</span></div>
+  </div>
+</div>
+<div class="modal" id="villageOptionsModal">
+  <div class="modal-content small">
+    <h2>🏰 <span id="villageOptionsOwner"></span></h2>
+    <p style="color: white; text-align: center; margin-bottom: 20px;">Esta aldea está bajo ataque</p>
+    <button class="attack-option" id="viewVillageBtn">🏝️ Ver Aldea</button>
+    <button class="attack-option" id="spectateBtn">👁️ Espectear Ataque (Tiempo Real)</button>
+    <button class="modal-close" id="closeVillageOptions">Cancelar</button>
   </div>
 </div>
 <div class="modal" id="loginModal">
@@ -862,7 +873,11 @@ const state = {
   intervals: { gold: null, particles: {} },
   skipCentering: false,
   shovelLevel: 1, // Nivel de la pala (x1 a x5)
-  isProcessingClick: false // Prevenir clics múltiples
+  isProcessingClick: false, // Prevenir clics múltiples
+  selectedVillage: null, // Aldea seleccionada para espectear
+  spectating: false, // Modo espectador activo
+  spectateListener: null, // Listener de Firebase para espectador
+  spectateAttackListener: null // Listener de eventos de ataque
 };
 const ACHIEVEMENTS = {
   firstVillage: { id: 'firstVillage', name: 'Primer Constructor', desc: 'Construye tu primera aldea', icon: '🏰', reward: '+50 XP' },
@@ -874,7 +889,8 @@ const ACHIEVEMENTS = {
   maxMines: { id: 'maxMines', name: 'Imperio Minero', desc: 'Construye el máximo de minas (2)', icon: '⚒️', reward: '+50 XP' },
   explorer: { id: 'explorer', name: 'Explorador', desc: 'Visita la aldea de otro jugador', icon: '🗺️', reward: '+25 XP' },
   rocketLauncher: { id: 'rocketLauncher', name: 'Pionero Espacial', desc: 'Construye el lanza cohetes', icon: '🚀', reward: '+500 XP' },
-  deflectorTower: { id: 'deflectorTower', name: 'Escudo Defensivo', desc: 'Construye la Torre Desviadora', icon: '🛡️', reward: '+300 XP' }
+  deflectorTower: { id: 'deflectorTower', name: 'Escudo Defensivo', desc: 'Construye la Torre Desviadora', icon: '🛡️', reward: '+300 XP' },
+  spectator: { id: 'spectator', name: 'Observador', desc: 'Espectea el ataque de un jugador', icon: '👁️', reward: '+50 XP' }
 };
 // DOM Elements
 const $ = id => document.getElementById(id);
@@ -936,10 +952,12 @@ function startParticles(id, cell) {
     p.className = 'particula';
     p.style.left = Math.random() * cell.offsetWidth + 'px';
     p.style.top = Math.random() * cell.offsetHeight + 'px';
-    p.style.background = `rgb(${150 + Math.random()*100}, 0, 0)`;
+    const red = 200 + Math.random() * 55;
+    const orange = Math.random() * 100;
+    p.style.background = `rgb(${red}, ${orange}, 0)`;
     cell.appendChild(p);
     p.onanimationend = () => p.remove();
-  }, 100);
+  }, 80);
 }
 function stopParticles(id) {
   if (state.intervals.particles[id]) {
@@ -959,7 +977,22 @@ async function handleMainClick(cell) {
   const r = +cell.dataset.row, c = +cell.dataset.col;
  
   if (state.map[r][c].building === 'house') {
-    openIsland(state.map[r][c].owner);
+    const owner = state.map[r][c].owner;
+    const villageId = `${r}-${c}`;
+    
+    // Verificar si la aldea está bajo ataque
+    const villageSnap = await get(ref(db, `villages/${villageId}`));
+    if (villageSnap.exists() && villageSnap.val().underAttack) {
+      // Mostrar modal con opciones
+      $('villageOptionsOwner').textContent = owner;
+      show(modal('villageOptions'));
+      
+      // Guardar datos para los botones
+      state.selectedVillage = { owner, id: villageId, row: r, col: c };
+      return;
+    }
+    
+    openIsland(owner);
     return;
   }
  
@@ -1048,6 +1081,235 @@ async function openIsland(owner) {
   $('shopButton').style.display = owner === state.user ? 'block' : 'none';
   $('inventoryButton').style.display = owner === state.user ? 'block' : 'none';
   $('attackButton').style.display = owner !== state.user && state.user ? 'block' : 'none';
+}
+async function startSpectating(village) {
+  state.spectating = true;
+  state.currentVillage = { owner: village.owner, id: village.id };
+  $('ownerName').textContent = village.owner + ' (ESPECTANDO)';
+  
+  // Desbloquear logro de espectador
+  await unlockAchievement('spectator');
+  
+  // Cargar datos iniciales
+  await Promise.all([loadBuildings(village.owner), loadResources(village.owner), loadLevel(village.owner)]);
+  
+  renderIsland();
+  transition(true);
+  
+  // Ocultar botones de acción
+  $('shopButton').style.display = 'none';
+  $('inventoryButton').style.display = 'none';
+  $('attackButton').style.display = 'none';
+  $('backButton').textContent = '← Salir de Espectador';
+  
+  // Escuchar eventos de ataque en tiempo real
+  state.spectateAttackListener = onValue(ref(db, `villages/${village.id}/currentAttack`), async (snap) => {
+    if (snap.exists() && state.spectating) {
+      const attackData = snap.val();
+      
+      if (attackData && attackData.active) {
+        // Reproducir animación de ataque
+        await playSpectatorAttack(attackData);
+      }
+    }
+  });
+  
+  // Escuchar cambios en edificios (más rápido con menos delay)
+  state.spectateListener = onValue(ref(db, `users/${village.owner}/buildings`), async (snap) => {
+    if (snap.exists() && state.spectating) {
+      const newBuildings = snap.val();
+      
+      state.buildings = {
+        mines: newBuildings.goldMines || newBuildings.mines || [],
+        rocketLaunchers: newBuildings.rocketLaunchers || [],
+        deflectorTowers: newBuildings.deflectorTowers || [],
+        statues: newBuildings.statues || [],
+        flowers: newBuildings.flowers || [],
+        damaged: newBuildings.damaged || []
+      };
+      
+      renderIsland();
+    }
+  });
+  
+  // Modificar el botón de regresar para salir del modo espectador
+  $('backButton').onclick = () => {
+    if (state.spectating) {
+      stopSpectating();
+      $('backButton').textContent = '← Volver al Mapa';
+      
+      // Volver al mapa principal
+      document.querySelector('.map-view').style.opacity = 1;
+      document.querySelector('.island-view').style.opacity = 0;
+      document.querySelector('.island-view').style.pointerEvents = 'none';
+      document.querySelector('.map-view').style.pointerEvents = 'auto';
+      $('fade').style.opacity = 0;
+    }
+  };
+}
+function stopSpectating() {
+  state.spectating = false;
+  if (state.spectateListener) {
+    state.spectateListener();
+    state.spectateListener = null;
+  }
+  if (state.spectateAttackListener) {
+    state.spectateAttackListener();
+    state.spectateAttackListener = null;
+  }
+}
+async function playSpectatorAttack(attackData) {
+  if (!attackData.actions || attackData.actions.length === 0) return;
+  
+  // Reproducir cada acción con el timing correcto
+  for (const action of attackData.actions) {
+    // Esperar el tiempo especificado
+    await new Promise(resolve => setTimeout(resolve, action.delay || 0));
+    
+    if (action.type === 'transition_attacker') {
+      // Transición a la aldea del atacante
+      $('fade').style.opacity = 1;
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
+      // Cargar aldea del atacante
+      state.skipCentering = true;
+      await openIsland(action.attacker);
+      
+      setTimeout(() => $('fade').style.opacity = 0, 100);
+      
+    } else if (action.type === 'rocket_launch') {
+      // Mostrar cohete despegando
+      const launcherCell = $('islandGrid').querySelector(`[data-row="${action.launcherRow}"][data-col="${action.launcherCol}"]`);
+      if (!launcherCell) continue;
+      
+      const launcherRect = launcherCell.getBoundingClientRect();
+      const rocket = document.createElement('div');
+      rocket.style.position = 'fixed';
+      rocket.style.fontSize = '40px';
+      rocket.style.left = launcherRect.left + launcherRect.width / 2 - 20 + 'px';
+      rocket.style.top = launcherRect.top + launcherRect.height / 2 - 20 + 'px';
+      rocket.style.zIndex = '10001';
+      rocket.textContent = '🚀';
+      rocket.style.filter = 'drop-shadow(0 0 10px rgba(255, 100, 0, 0.8))';
+      document.body.appendChild(rocket);
+      
+      // Variables para la animación
+      const rocketStartTime = Date.now();
+      const rocketDuration = 3500;
+      const rocketStartY = parseFloat(rocket.style.top);
+      const rocketStartX = parseFloat(rocket.style.left);
+      const rocketEndY = rocketStartY - 1200;
+      
+      // Partículas de humo
+      const smokeInterval = setInterval(() => {
+        const elapsed = Date.now() - rocketStartTime;
+        const progress = Math.min(elapsed / rocketDuration, 1);
+        const easeProgress = progress * progress;
+        const currentRocketY = rocketStartY - (easeProgress * (rocketStartY - rocketEndY));
+        
+        for (let i = 0; i < 3; i++) {
+          const smoke = document.createElement('div');
+          smoke.style.position = 'fixed';
+          smoke.style.left = (rocketStartX + 20 + (Math.random() - 0.5) * 15) + 'px';
+          smoke.style.top = (currentRocketY + 35) + 'px';
+          smoke.style.width = (8 + Math.random() * 12) + 'px';
+          smoke.style.height = (8 + Math.random() * 12) + 'px';
+          smoke.style.borderRadius = '50%';
+          const opacity = 0.6 + Math.random() * 0.3;
+          const gray = 180 + Math.random() * 75;
+          smoke.style.background = `rgba(${gray}, ${gray}, ${gray}, ${opacity})`;
+          smoke.style.boxShadow = `0 0 8px rgba(255, 255, 255, 0.5)`;
+          smoke.style.zIndex = '10000';
+          smoke.style.pointerEvents = 'none';
+          document.body.appendChild(smoke);
+          
+          const spreadX = (Math.random() - 0.5) * 50;
+          const spreadY = Math.random() * 40 + 30;
+          const duration = 1000 + Math.random() * 500;
+          smoke.style.transition = `all ${duration}ms ease-out`;
+          
+          setTimeout(() => {
+            smoke.style.transform = `translate(${spreadX}px, ${spreadY}px) scale(2.5)`;
+            smoke.style.opacity = '0';
+          }, 50);
+          
+          setTimeout(() => smoke.remove(), duration + 100);
+        }
+      }, 70);
+      
+      // Animar cohete
+      const animateRocket = () => {
+        const elapsed = Date.now() - rocketStartTime;
+        const progress = Math.min(elapsed / rocketDuration, 1);
+        const easeProgress = progress * progress;
+        const currentY = rocketStartY - (easeProgress * (rocketStartY - rocketEndY));
+        rocket.style.top = currentY + 'px';
+        
+        if (progress > 0.7) {
+          rocket.style.opacity = (1 - (progress - 0.7) / 0.3).toString();
+        }
+        
+        if (progress < 1) {
+          requestAnimationFrame(animateRocket);
+        }
+      };
+      
+      requestAnimationFrame(animateRocket);
+      await new Promise(resolve => setTimeout(resolve, rocketDuration));
+      clearInterval(smokeInterval);
+      rocket.remove();
+      
+    } else if (action.type === 'transition_target') {
+      // Transición a la aldea objetivo
+      $('fade').style.opacity = 1;
+      await new Promise(resolve => setTimeout(resolve, 400));
+      
+      state.skipCentering = true;
+      await openIsland(action.target);
+      
+      setTimeout(() => $('fade').style.opacity = 0, 100);
+      
+    } else if (action.type === 'rocket_fall') {
+      // Cohete cayendo
+      const targetCell = $('islandGrid').querySelector(`[data-row="${action.targetRow}"][data-col="${action.targetCol}"]`);
+      if (!targetCell) continue;
+      
+      const targetRect = targetCell.getBoundingClientRect();
+      const targetCenterX = targetRect.left + targetRect.width / 2;
+      const targetCenterY = targetRect.top + targetRect.height / 2;
+      
+      const fallingRocket = document.createElement('div');
+      fallingRocket.style.position = 'fixed';
+      fallingRocket.style.fontSize = '40px';
+      fallingRocket.style.left = targetCenterX - 20 + 'px';
+      fallingRocket.style.top = '-100px';
+      fallingRocket.style.zIndex = '10001';
+      fallingRocket.textContent = '🚀';
+      fallingRocket.style.transform = 'rotate(180deg)';
+      fallingRocket.style.transition = 'top 1.5s ease-in';
+      fallingRocket.style.filter = 'drop-shadow(0 0 15px rgba(255, 50, 0, 1))';
+      document.body.appendChild(fallingRocket);
+      
+      setTimeout(() => {
+        fallingRocket.style.top = targetCenterY - 20 + 'px';
+      }, 100);
+      
+      await new Promise(resolve => setTimeout(resolve, 1600));
+      fallingRocket.remove();
+      
+    } else if (action.type === 'explosion') {
+      // Explosión
+      const targetCell = $('islandGrid').querySelector(`[data-row="${action.targetRow}"][data-col="${action.targetCol}"]`);
+      if (!targetCell) continue;
+      
+      const targetRect = targetCell.getBoundingClientRect();
+      createExplosion(targetRect.left + targetRect.width / 2, targetRect.top + targetRect.height / 2);
+      
+      const viewport = $('islandViewport');
+      viewport.classList.add('shake');
+      setTimeout(() => viewport.classList.remove('shake'), 500);
+    }
+  }
 }
 function renderIsland() {
   const grid = $('islandGrid');
@@ -1319,6 +1581,19 @@ async function repair(r, c, cell, shovelLevel = 1) {
 // Attack Functions
 async function launchBomb(r, c) {
   loading(true);
+  
+  // ESCRIBIR EVENTO DE ATAQUE PARA ESPECTADORES
+  await set(ref(db, `villages/${state.currentVillage.id}/currentAttack`), {
+    active: true,
+    type: 'bomb',
+    targetRow: r,
+    targetCol: c,
+    timestamp: Date.now()
+  });
+  
+  // Pequeño delay para que los espectadores vean la animación
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
       const nr = r + dx, nc = c + dy;
@@ -1362,6 +1637,7 @@ async function launchBomb(r, c) {
   state.attacking = false;
   state.placing = null;
   await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+  await set(ref(db, `villages/${state.currentVillage.id}/currentAttack`), { active: false });
   
   // Mostrar notificación de XP en el centro de la pantalla
   showXPNotification(30, window.innerWidth / 2 - 50, window.innerHeight / 2);
@@ -1390,8 +1666,8 @@ async function launchRocketAttack(r, c) {
     // Calcular distancia entre el cohete y la torre
     const distance = Math.sqrt(Math.pow(r - tower.row, 2) + Math.pow(c - tower.col, 2));
     
-    // Si la torre está dentro del rango de 3 celdas, puede desviar el cohete
-    if (distance <= 3) {
+    // Si la torre está dentro del rango de 5 celdas, puede desviar el cohete
+    if (distance <= 5) {
       deflectorTower = tower;
       break;
     }
@@ -1399,6 +1675,12 @@ async function launchRocketAttack(r, c) {
   
   // Restar una munición
   await set(ref(db, `users/${state.user}/inventory/rocketAmmo`), rocketAmmo - 1);
+
+  // SISTEMA DE GRABACIÓN PARA ESPECTADORES
+  const attackActions = [];
+  const recordAction = (type, data, delay = 0) => {
+    attackActions.push({ type, ...data, delay });
+  };
 
   // Guardar datos del ataque y zoom actual
   const attackTarget = {row: r, col: c, owner: state.currentVillage.owner, id: state.currentVillage.id};
@@ -1426,16 +1708,29 @@ async function launchRocketAttack(r, c) {
   const myRocketLauncher = myRocketLaunchers[0];
  
   // Paso 1: Transición a mi aldea
+  recordAction('transition_attacker', { attacker: state.user }, 0);
+  
   $('fade').style.opacity = 1;
   await new Promise(resolve => setTimeout(resolve, 400));
  
   state.skipCentering = true;
   await openIsland(state.user);
- 
+
+  // OCULTAR BOTONES DE UI DURANTE LA ANIMACIÓN (excepto logros)
+  $('backButton').style.display = 'none';
+  $('inventoryButton').style.display = 'none';
+  $('shopButton').style.display = 'none';
+  // El botón de logros se mantiene visible
+
   // Centrar en el lanza cohetes sin animación
   const rocketLauncherCell = $('islandGrid').querySelector(`[data-row="${myRocketLauncher.row}"][data-col="${myRocketLauncher.col}"]`);
   if (!rocketLauncherCell) {
     alert('Error: No se pudo encontrar el lanza cohetes');
+    // RESTAURAR BOTONES DE UI en caso de error
+    $('backButton').style.display = 'block';
+    $('inventoryButton').style.display = state.user === state.currentVillage.owner ? 'block' : 'none';
+    $('shopButton').style.display = state.user === state.currentVillage.owner ? 'block' : 'none';
+    $('attackButton').style.display = state.user !== state.currentVillage.owner ? 'block' : 'none';
     loading(false);
     return;
   }
@@ -1460,6 +1755,12 @@ async function launchRocketAttack(r, c) {
  
   // Paso 3: Lanzar cohete hacia arriba
   await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // GRABAR LANZAMIENTO DEL COHETE
+  recordAction('rocket_launch', { 
+    launcherRow: myRocketLauncher.row, 
+    launcherCol: myRocketLauncher.col 
+  }, 500);
  
   // Obtener la posición actualizada del lanza cohetes
   const updatedRocketLauncherCell = $('islandGrid').querySelector(`[data-row="${myRocketLauncher.row}"][data-col="${myRocketLauncher.col}"]`);
@@ -1472,42 +1773,91 @@ async function launchRocketAttack(r, c) {
   rocket.style.top = updatedRect.top + updatedRect.height / 2 - 20 + 'px';
   rocket.style.zIndex = '10001';
   rocket.textContent = '🚀';
-  rocket.style.transition = 'transform 2s ease-in, opacity 0.5s ease-in';
   rocket.style.filter = 'drop-shadow(0 0 10px rgba(255, 100, 0, 0.8))';
   document.body.appendChild(rocket);
  
-  // Crear estela de humo
+  // Variables para rastrear la posición del cohete
+  const rocketStartTime = Date.now();
+  const rocketDuration = 3500; // Duración más larga para el despegue
+  const rocketStartY = parseFloat(rocket.style.top);
+  const rocketStartX = parseFloat(rocket.style.left);
+  const rocketEndY = rocketStartY - 1200; // Más distancia
+ 
+  // Crear partículas de humo que siguen al cohete
   const smokeInterval = setInterval(() => {
-    const smoke = document.createElement('div');
-    smoke.style.position = 'fixed';
-    smoke.style.left = rocket.style.left;
-    smoke.style.top = rocket.style.top;
-    smoke.style.fontSize = '24px';
-    smoke.style.zIndex = '10000';
-    smoke.textContent = '💨';
-    smoke.style.transition = 'opacity 1s ease-out, transform 1s ease-out';
-    smoke.style.opacity = '1';
-    document.body.appendChild(smoke);
-   
-    setTimeout(() => {
-      smoke.style.opacity = '0';
-      smoke.style.transform = 'scale(1.5)';
-    }, 100);
-   
-    setTimeout(() => smoke.remove(), 1100);
-  }, 150);
+    // Calcular posición actual del cohete basado en el tiempo
+    const elapsed = Date.now() - rocketStartTime;
+    const progress = Math.min(elapsed / rocketDuration, 1);
+    const easeProgress = progress * progress; // Aceleración
+    
+    const currentRocketY = rocketStartY - (easeProgress * (rocketStartY - rocketEndY));
+    
+    // Crear múltiples partículas por cada intervalo
+    for (let i = 0; i < 3; i++) {
+      const smoke = document.createElement('div');
+      smoke.style.position = 'fixed';
+      
+      // Posición inicial en la base del cohete (siguiendo su movimiento)
+      smoke.style.left = (rocketStartX + 20 + (Math.random() - 0.5) * 15) + 'px';
+      smoke.style.top = (currentRocketY + 35) + 'px'; // Debajo del cohete en movimiento
+      
+      smoke.style.width = (8 + Math.random() * 12) + 'px';
+      smoke.style.height = (8 + Math.random() * 12) + 'px';
+      smoke.style.borderRadius = '50%';
+      
+      // Color gris/blanco para el humo
+      const opacity = 0.6 + Math.random() * 0.3;
+      const gray = 180 + Math.random() * 75;
+      smoke.style.background = `rgba(${gray}, ${gray}, ${gray}, ${opacity})`;
+      smoke.style.boxShadow = `0 0 8px rgba(255, 255, 255, 0.5)`;
+      smoke.style.zIndex = '10000';
+      smoke.style.pointerEvents = 'none';
+      document.body.appendChild(smoke);
+      
+      // Animación: dispersión hacia los lados y abajo
+      const spreadX = (Math.random() - 0.5) * 50; // Más dispersión horizontal
+      const spreadY = Math.random() * 40 + 30; // Más dispersión hacia abajo
+      const duration = 1000 + Math.random() * 500;
+      
+      smoke.style.transition = `all ${duration}ms ease-out`;
+      
+      setTimeout(() => {
+        smoke.style.transform = `translate(${spreadX}px, ${spreadY}px) scale(2.5)`;
+        smoke.style.opacity = '0';
+      }, 50);
+      
+      setTimeout(() => smoke.remove(), duration + 100);
+    }
+  }, 70);
  
-  // Animar cohete hacia arriba
-  setTimeout(() => {
-    rocket.style.transform = 'translateY(-1000px) rotate(0deg)';
-    rocket.style.opacity = '0';
-  }, 100);
+  // Animar cohete hacia arriba con animación manual más suave
+  const animateRocket = () => {
+    const elapsed = Date.now() - rocketStartTime;
+    const progress = Math.min(elapsed / rocketDuration, 1);
+    const easeProgress = progress * progress; // Aceleración
+    
+    const currentY = rocketStartY - (easeProgress * (rocketStartY - rocketEndY));
+    rocket.style.top = currentY + 'px';
+    
+    // Fade out al final
+    if (progress > 0.7) {
+      rocket.style.opacity = (1 - (progress - 0.7) / 0.3).toString();
+    }
+    
+    if (progress < 1) {
+      requestAnimationFrame(animateRocket);
+    }
+  };
+  
+  requestAnimationFrame(animateRocket);
  
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  await new Promise(resolve => setTimeout(resolve, rocketDuration));
   clearInterval(smokeInterval);
   rocket.remove();
  
   // Paso 4: Transición a la aldea atacada
+  recordAction('transition_target', { target: attackTarget.owner }, 3500);
+  
   $('fade').style.opacity = 1;
   await new Promise(resolve => setTimeout(resolve, 400));
  
@@ -1523,16 +1873,30 @@ async function launchRocketAttack(r, c) {
   state.view.island.y = savedZoom.y;
   state.view.island.scale = savedZoom.scale;
   updateTransform('island');
- 
+
+  // Forzar que el botón de regresar aparezca inmediatamente
+  $('backButton').style.display = 'block';
+
   setTimeout(() => $('fade').style.opacity = 0, 100);
  
   // Paso 5: Cohete cae desde arriba en la posición exacta del ataque
   await new Promise(resolve => setTimeout(resolve, 800));
+  
+  // GRABAR CAÍDA DEL COHETE
+  recordAction('rocket_fall', { 
+    targetRow: attackTarget.row, 
+    targetCol: attackTarget.col 
+  }, 800);
  
   // Calcular la posición exacta de la celda objetivo en pantalla
   const targetCell = $('islandGrid').querySelector(`[data-row="${attackTarget.row}"][data-col="${attackTarget.col}"]`);
   if (!targetCell) {
     alert('Error: No se pudo encontrar la celda objetivo');
+    // RESTAURAR BOTONES DE UI en caso de error
+    $('backButton').style.display = 'block';
+    $('inventoryButton').style.display = 'none';
+    $('shopButton').style.display = 'none';
+    $('attackButton').style.display = 'block';
     loading(false);
     return;
   }
@@ -1733,9 +2097,16 @@ async function launchRocketAttack(r, c) {
       // Mensaje de éxito (notificación flotante)
       showXPNotification(0, window.innerWidth / 2 - 100, window.innerHeight / 2, '🛡️ DESVIADO AL MAR');
       
+      // RESTAURAR BOTONES DE UI
+      $('backButton').style.display = 'block';
+      $('inventoryButton').style.display = 'none';
+      $('shopButton').style.display = 'none';
+      $('attackButton').style.display = 'block';
+      
       state.attacking = false;
       state.placing = null;
       await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+      await set(ref(db, `villages/${attackTarget.id}/currentAttack`), { active: false });
       loading(false);
       return;
     } else {
@@ -1817,9 +2188,16 @@ async function launchRocketAttack(r, c) {
         await set(ref(db, `users/${state.user}/level`), attackerLevel);
       }
       
+      // RESTAURAR BOTONES DE UI
+      $('backButton').style.display = 'block';
+      $('inventoryButton').style.display = 'none';
+      $('shopButton').style.display = 'none';
+      $('attackButton').style.display = 'block';
+      
       state.attacking = false;
       state.placing = null;
       await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+      await set(ref(db, `villages/${attackTarget.id}/currentAttack`), { active: false });
       
       // Mostrar notificación de XP reducido
       showXPNotification(15, window.innerWidth / 2 - 50, window.innerHeight / 2);
@@ -1831,6 +2209,12 @@ async function launchRocketAttack(r, c) {
 
   // Paso 6: EXPLOSIÓN con efectos (solo si NO fue desviado)
   await new Promise(resolve => setTimeout(resolve, 750));
+
+  // GRABAR EXPLOSIÓN
+  recordAction('explosion', { 
+    targetRow: attackTarget.row, 
+    targetCol: attackTarget.col 
+  }, 1600);
 
   fallingRocket.remove();
  
@@ -1893,9 +2277,29 @@ async function launchRocketAttack(r, c) {
     await set(ref(db, `users/${state.user}/level`), attackerLevel);
   }
   
+  // RESTAURAR BOTONES DE UI
+  $('backButton').style.display = 'block';
+  $('inventoryButton').style.display = 'none';
+  $('shopButton').style.display = 'none';
+  $('attackButton').style.display = 'block';
+  
   state.attacking = false;
   state.placing = null;
   await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+  
+  // GUARDAR ACCIONES PARA ESPECTADORES CON DELAY DE 1 SEGUNDO
+  setTimeout(async () => {
+    await set(ref(db, `villages/${attackTarget.id}/currentAttack`), {
+      active: true,
+      actions: attackActions,
+      timestamp: Date.now()
+    });
+    
+    // Limpiar después de que termine la animación (aproximadamente 10 segundos)
+    setTimeout(async () => {
+      await set(ref(db, `villages/${attackTarget.id}/currentAttack`), { active: false });
+    }, 10000);
+  }, 1000);
  
   setTimeout(() => {
     // Mostrar notificación de XP en el centro
@@ -2816,6 +3220,19 @@ $('closeInventory').onclick = () => hide(modal('inventory'));
 $('closeGlobalShop').onclick = () => hide(modal('globalShop'));
 $('closeTopPlayers').onclick = () => hide(modal('topPlayers'));
 $('closeAchievements').onclick = () => hide(modal('achievements'));
+$('closeVillageOptions').onclick = () => hide(modal('villageOptions'));
+$('viewVillageBtn').onclick = () => {
+  hide(modal('villageOptions'));
+  if (state.selectedVillage) {
+    openIsland(state.selectedVillage.owner);
+  }
+};
+$('spectateBtn').onclick = async () => {
+  hide(modal('villageOptions'));
+  if (state.selectedVillage) {
+    await startSpectating(state.selectedVillage);
+  }
+};
 $('shopButton').onclick = () => {
   show(modal('shop'));
   updateShop();
