@@ -246,6 +246,12 @@ body.night-mode .island-cell.rocket {
 body.night-mode .island-cell.statue {
   background-color: #404040;
 }
+.island-cell.damaged {
+  background-color: #8B4513;
+}
+body.night-mode .island-cell.damaged {
+  background-color: #5d2e0b;
+}
 .island-cell.building-hover:hover {
   background-color: rgba(255, 215, 0, 0.5);
   cursor: pointer;
@@ -1093,6 +1099,65 @@ body.night-mode .island-cell.statue {
 #closeGlobalShop:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+/* === Attack Modal === */
+#attackModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+#attackContent {
+  background: linear-gradient(135deg, #ff0000 0%, #8b0000 100%);
+  padding: 30px;
+  border-radius: 20px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+}
+#attackContent h2 {
+  color: white;
+  margin: 0 0 20px 0;
+  text-align: center;
+  font-size: 28px;
+}
+.attack-option {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  margin: 10px 0;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  border-radius: 8px;
+  color: #333;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.3s;
+}
+.attack-option:hover {
+  background: #f0f0f0;
+}
+#closeAttack {
+  display: block;
+  margin: 20px auto 0;
+  padding: 12px 30px;
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid white;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 16px;
+}
+#closeAttack:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
 </style>
 </head>
 <body>
@@ -1129,7 +1194,7 @@ body.night-mode .island-cell.statue {
   </div>
   <button id="shopButton" onclick="openShop()">🛒 Tienda</button>
   <button id="inventoryButton" onclick="openInventory()">🎒 Inventario</button>
-  <button id="attackButton" onclick="attackVillage()">⚔️ Atacar</button>
+  <button id="attackButton" onclick="openAttackModal()">⚔️ Atacar</button>
   <div id="islandViewport">
     <div id="islandWorld">
       <div id="islandContainer"></div>
@@ -1161,6 +1226,15 @@ body.night-mode .island-cell.statue {
       <button id="buyRocketBtn" onclick="buyRocket()">Comprar</button>
     </div>
  
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">🛠️ Pala</div>
+        <div class="shop-item-desc">Repara áreas dañadas en tu aldea</div>
+        <div class="shop-item-cost">💰 50 Oro</div>
+      </div>
+      <button id="buyShovelBtn" onclick="buyShovel()">Comprar</button>
+    </div>
+ 
     <button id="closeShop" onclick="closeShop()">Cerrar</button>
   </div>
 </div>
@@ -1187,6 +1261,15 @@ body.night-mode .island-cell.statue {
     </div>
  
     <button id="closeGlobalShop" onclick="closeGlobalShop()">Cerrar</button>
+  </div>
+</div>
+<!-- Modal de Ataque -->
+<div id="attackModal">
+  <div id="attackContent">
+    <h2>Elige Ataque</h2>
+    <button class="attack-option" onclick="chooseAttack('rob')">Robar Oro (100 oro, roba hasta 50)</button>
+    <button class="attack-option" onclick="chooseAttack('bomb')">Lanzar Bomba (100 oro, daña 3x3)</button>
+    <button id="closeAttack" onclick="closeAttackModal()">Cancelar</button>
   </div>
 </div>
 <!-- Modal de Top Jugadores -->
@@ -1361,6 +1444,7 @@ const mineCountEl = document.getElementById('mineCount');
 const buyMineBtn = document.getElementById('buyMineBtn');
 const rocketCountEl = document.getElementById('rocketCount');
 const buyRocketBtn = document.getElementById('buyRocketBtn');
+const buyShovelBtn = document.getElementById('buyShovelBtn');
 const inventoryModal = document.getElementById('inventoryModal');
 const inventoryItems = document.getElementById('inventoryItems');
 const globalShopModal = document.getElementById('globalShopModal');
@@ -1378,6 +1462,7 @@ const topPlayersList = document.getElementById('topPlayersList');
 const achievementsModal = document.getElementById('achievementsModal');
 const achievementsList = document.getElementById('achievementsList');
 const tutorialModal = document.getElementById('tutorialModal');
+const attackModal = document.getElementById('attackModal');
 const dayNightToggle = document.getElementById('dayNightToggle');
 let isNightMode = false;
 let currentTutorialStep = 1;
@@ -1457,10 +1542,12 @@ let currentGold = 0;
 let goldMines = [];
 let rockets = [];
 let statues = [];
+let damaged = [];
 let userLevel = 1;
 let userXP = 0;
 let xpNeeded = 100;
 let placingItem = null;
+let isAttacking = false;
 let currentInventory = [];
 let firstTickDelay = 5000;
 // Variables para la isla
@@ -1974,13 +2061,16 @@ window.openInventory = async function() {
       if (itemType === 'statue') {
         name = '🗿 Estatua Moai';
         desc = 'Estatua decorativa única para tu aldea';
+      } else if (itemType === 'shovel') {
+        name = '🛠️ Pala';
+        desc = 'Repara áreas dañadas';
       }
       itemDiv.innerHTML = `
         <div class="shop-item-info">
           <div class="shop-item-name">${name}</div>
           <div class="shop-item-desc">${desc}</div>
         </div>
-        <button onclick="placeFromInventory(${index})">Colocar</button>
+        <button onclick="placeFromInventory(${index})">Usar</button>
       `;
       inventoryItems.appendChild(itemDiv);
     });
@@ -1989,14 +2079,17 @@ window.openInventory = async function() {
 window.placeFromInventory = function(index) {
   placingItem = currentInventory[index];
   closeInventory();
-  alert(`Haz click en una celda verde para colocar la ${placingItem === 'statue' ? 'estatua Moai' : ''}`);
+  alert(`Haz click en una celda ${placingItem === 'statue' ? 'verde' : 'dañada'} para ${placingItem === 'statue' ? 'colocar la estatua Moai' : 'reparar con la pala'}`);
 }
 window.closeInventory = function() {
   inventoryModal.style.display = 'none';
 }
 // Funcion de ataque
-window.attackVillage = async function() {
-  if(!confirm('¿Atacar esta aldea? Costo: 100 oro. Robarás hasta 50 oro.')) return;
+window.openAttackModal = function() {
+  attackModal.style.display = 'flex';
+}
+window.chooseAttack = async function(type) {
+  closeAttackModal();
   showLoading();
   try {
     const attacker = userName;
@@ -2005,33 +2098,45 @@ window.attackVillage = async function() {
     const victimResourcesRef = ref(db, `users/${victim}/resources`);
     const attackerSnap = await get(attackerResourcesRef);
     let attackerGold = attackerSnap.exists() ? attackerSnap.val().gold : 0;
-    if(attackerGold < 100) {
+    if (attackerGold < 100) {
       alert('No tienes suficiente oro para atacar.');
       hideLoading();
       return;
     }
-    const victimSnap = await get(victimResourcesRef);
-    let victimGold = victimSnap.exists() ? victimSnap.val().gold : 0;
-    let stealAmount = Math.min(50, Math.floor(victimGold * 0.1));
-    if(stealAmount <= 0) {
-      alert('No hay suficiente oro para robar en esta aldea.');
-      hideLoading();
-      return;
-    }
     attackerGold -= 100;
-    attackerGold += stealAmount;
-    victimGold -= stealAmount;
     await set(attackerResourcesRef, {gold: attackerGold, lastUpdate: Date.now()});
-    await set(victimResourcesRef, {gold: victimGold, lastUpdate: Date.now()});
-    await addXP(attacker, 20);
-    currentGold = victimGold;
-    updateResourcesDisplay();
-    alert(`¡Ataque exitoso! Robaste ${stealAmount} oro. +20 XP`);
+    if (type === 'rob') {
+      // Robar
+      const victimSnap = await get(victimResourcesRef);
+      let victimGold = victimSnap.exists() ? victimSnap.val().gold : 0;
+      let stealAmount = Math.min(50, Math.floor(victimGold * 0.1));
+      if (stealAmount <= 0) {
+        alert('No hay suficiente oro para robar en esta aldea.');
+        hideLoading();
+        return;
+      }
+      attackerGold += stealAmount;
+      victimGold -= stealAmount;
+      await set(attackerResourcesRef, {gold: attackerGold, lastUpdate: Date.now()});
+      await set(victimResourcesRef, {gold: victimGold, lastUpdate: Date.now()});
+      await addXP(attacker, 20);
+      currentGold = victimGold;
+      updateResourcesDisplay();
+      alert(`¡Ataque exitoso! Robaste ${stealAmount} oro. +20 XP`);
+    } else if (type === 'bomb') {
+      // Lanzar bomba
+      isAttacking = true;
+      placingItem = 'bomb';
+      alert('Haz click en una celda del mapa enemigo para lanzar la bomba (rango 3x3)');
+    }
   } catch(error) {
     console.error('Error en ataque:', error);
     alert('Error al realizar el ataque.');
   }
   hideLoading();
+}
+window.closeAttackModal = function() {
+  attackModal.style.display = 'none';
 }
 // Crear mapa con bordes
 let map = [];
@@ -2156,11 +2261,13 @@ async function loadIslandBuildings(owner) {
   goldMines = [];
   rockets = [];
   statues = [];
+  damaged = [];
   if (snapshot.exists()) {
     const buildings = snapshot.val();
     goldMines = buildings.goldMines || [];
     rockets = buildings.rockets || [];
     statues = buildings.statues || [];
+    damaged = buildings.damaged || [];
   }
   updateShopUI();
 }
@@ -2191,6 +2298,8 @@ function updateShopUI() {
     buyRocketBtn.disabled = false;
     buyRocketBtn.textContent = 'Comprar';
   }
+  buyShovelBtn.disabled = false;
+  buyShovelBtn.textContent = 'Comprar';
 }
 async function addXP(owner, amount) {
   const levelRef = ref(db, `users/${owner}/level`);
@@ -2296,15 +2405,11 @@ async function openIsland(owner) {
       islandCell.classList.add('island-cell');
       islandCell.dataset.row = r;
       islandCell.dataset.col = c;
+      islandCell.addEventListener('click', () => handleIslandCellClick(islandCell));
    
       if (r === 10 && c === 10) {
         islandCell.classList.add('center');
         islandCell.textContent = '🏰';
-      } else {
-        // Permitir construcción solo en la propia isla
-        if (owner === userName) {
-          islandCell.addEventListener('click', () => handleIslandCellClick(islandCell));
-        }
       }
    
       islandContainer.appendChild(islandCell);
@@ -2335,6 +2440,14 @@ async function openIsland(owner) {
       if (cell) {
         cell.classList.add('statue');
         cell.textContent = '🗿';
+      }
+    });
+
+    // Cargar áreas dañadas
+    damaged.forEach(dmg => {
+      const cell = islandContainer.querySelector(`[data-row="${dmg.row}"][data-col="${dmg.col}"]`);
+      if (cell) {
+        cell.classList.add('damaged');
       }
     });
   }, 100);
@@ -2376,7 +2489,7 @@ async function handleIslandCellClick(cell) {
   const c = parseInt(cell.dataset.col);
   // No construir en el centro
   if (r === 10 && c === 10) {
-    alert('No puedes construir en el castillo');
+    alert('No puedes interactuar con el castillo');
     return;
   }
   // Verificar si ya hay algo construido
@@ -2384,116 +2497,197 @@ async function handleIslandCellClick(cell) {
     alert('Ya hay una estructura aquí');
     return;
   }
-  // Si está en modo de colocar
-  if (placingItem === 'mine') {
-    showLoading();
- 
-    try {
-      // Guardar mina
-      goldMines.push({ row: r, col: c });
-      await set(ref(db, `users/${currentVillageOwner}/buildings`), {
-        goldMines,
-        rockets,
-        statues
-      });
+  const isOwnVillage = currentVillageOwner === userName;
+  if (!isOwnVillage && !(isAttacking && placingItem === 'bomb')) {
+    return; // No permitir clicks en aldea ajena salvo para bomba
+  }
+  // Si está en modo de colocar en propia aldea
+  if (isOwnVillage) {
+    if (placingItem === 'mine') {
+      showLoading();
    
-      // Actualizar visualmente
-      cell.classList.add('gold-mine');
-      cell.textContent = '⛏️';
-   
-      // Dar XP por construir
-      await addXP(currentVillageOwner, 25);
-   
-      placingItem = null;
-      updateShopUI();
-   
-      // Iniciar generación de oro
-      startGoldGeneration();
-   
-      // Verificar logro de primera mina
-      if (goldMines.length === 1) {
-        await unlockAchievement('firstMine');
+      try {
+        // Guardar mina
+        goldMines.push({ row: r, col: c });
+        await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+          goldMines,
+          rockets,
+          statues,
+          damaged
+        });
+     
+        // Actualizar visualmente
+        cell.classList.add('gold-mine');
+        cell.textContent = '⛏️';
+     
+        // Dar XP por construir
+        await addXP(currentVillageOwner, 25);
+     
+        placingItem = null;
+        updateShopUI();
+     
+        // Iniciar generación de oro
+        startGoldGeneration();
+     
+        // Verificar logro de primera mina
+        if (goldMines.length === 1) {
+          await unlockAchievement('firstMine');
+        }
+     
+        alert('¡Mina construida! +25 XP');
+      } catch (error) {
+        console.error('Error construyendo mina:', error);
+        alert('Error al construir la mina.');
       }
    
-      alert('¡Mina construida! +25 XP');
-    } catch (error) {
-      console.error('Error construyendo mina:', error);
-      alert('Error al construir la mina.');
-    }
- 
-    hideLoading();
-  }
-  else if (placingItem === 'rocket') {
-    showLoading();
- 
-    try {
-      // Guardar cohete
-      rockets.push({ row: r, col: c });
-      await set(ref(db, `users/${currentVillageOwner}/buildings`), {
-        goldMines,
-        rockets,
-        statues
-      });
+      hideLoading();
+    } else if (placingItem === 'rocket') {
+      showLoading();
    
-      // Actualizar visualmente
-      cell.classList.add('rocket');
-      cell.textContent = '🚀';
-   
-      // Dar XP por construir
-      await addXP(currentVillageOwner, 100);
-   
-      placingItem = null;
-      updateShopUI();
-   
-      // Verificar logro del cohete
-      if (rockets.length === 1) {
-        await unlockAchievement('rocket');
+      try {
+        // Guardar cohete
+        rockets.push({ row: r, col: c });
+        await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+          goldMines,
+          rockets,
+          statues,
+          damaged
+        });
+     
+        // Actualizar visualmente
+        cell.classList.add('rocket');
+        cell.textContent = '🚀';
+     
+        // Dar XP por construir
+        await addXP(currentVillageOwner, 100);
+     
+        placingItem = null;
+        updateShopUI();
+     
+        // Verificar logro del cohete
+        if (rockets.length === 1) {
+          await unlockAchievement('rocket');
+        }
+     
+        alert('¡Cohete construido! +100 XP');
+      } catch (error) {
+        console.error('Error construyendo cohete:', error);
+        alert('Error al construir el cohete.');
       }
    
-      alert('¡Cohete construido! +100 XP');
-    } catch (error) {
-      console.error('Error construyendo cohete:', error);
-      alert('Error al construir el cohete.');
+      hideLoading();
+    } else if (placingItem === 'statue') {
+      showLoading();
+   
+      try {
+        // Guardar estatua
+        statues.push({ row: r, col: c });
+        await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+          goldMines,
+          rockets,
+          statues,
+          damaged
+        });
+     
+        // Actualizar visualmente
+        cell.classList.add('statue');
+        cell.textContent = '🗿';
+     
+        // Dar XP por colocar
+        await addXP(currentVillageOwner, 50);
+     
+        // Remover del inventario
+        const inventoryRef = ref(db, `users/${userName}/inventory/items`);
+        const snap = await get(inventoryRef);
+        let items = snap.exists() ? snap.val() : [];
+        const index = items.indexOf('statue');
+        if (index > -1) items.splice(index, 1);
+        await set(inventoryRef, items);
+     
+        placingItem = null;
+     
+        alert('¡Estatua Moai colocada! +50 XP');
+      } catch (error) {
+        console.error('Error colocando estatua:', error);
+        alert('Error al colocar la estatua.');
+      }
+   
+      hideLoading();
+    } else if (placingItem === 'shovel' && cell.classList.contains('damaged')) {
+      showLoading();
+   
+      try {
+        // Reparar
+        damaged = damaged.filter(d => !(d.row === r && d.col === c));
+        await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+          goldMines,
+          rockets,
+          statues,
+          damaged
+        });
+     
+        // Actualizar visualmente
+        cell.classList.remove('damaged');
+     
+        // Dar XP por reparar?
+        await addXP(currentVillageOwner, 10);
+     
+        // Remover del inventario
+        const inventoryRef = ref(db, `users/${userName}/inventory/items`);
+        const snap = await get(inventoryRef);
+        let items = snap.exists() ? snap.val() : [];
+        const index = items.indexOf('shovel');
+        if (index > -1) items.splice(index, 1);
+        await set(inventoryRef, items);
+     
+        placingItem = null;
+     
+        alert('¡Área reparada! +10 XP');
+      } catch (error) {
+        console.error('Error reparando:', error);
+        alert('Error al reparar.');
+      }
+   
+      hideLoading();
     }
- 
-    hideLoading();
-  }
-  else if (placingItem === 'statue') {
-    showLoading();
- 
-    try {
-      // Guardar estatua
-      statues.push({ row: r, col: c });
-      await set(ref(db, `users/${currentVillageOwner}/buildings`), {
-        goldMines,
-        rockets,
-        statues
-      });
+  } else {
+    // Ataque con bomba en aldea ajena
+    if (placingItem === 'bomb') {
+      showLoading();
    
-      // Actualizar visualmente
-      cell.classList.add('statue');
-      cell.textContent = '🗿';
+      try {
+        // Aplicar explosión 3x3
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const nr = r + dx;
+            const nc = c + dy;
+            if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
+              const targetCell = islandContainer.querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+              if (targetCell && !targetCell.classList.contains('gold-mine') && !targetCell.classList.contains('rocket') && !targetCell.classList.contains('statue') && !targetCell.classList.contains('damaged')) {
+                damaged.push({row: nr, col: nc});
+                targetCell.classList.add('damaged');
+              }
+            }
+          }
+        }
+        await set(ref(db, `users/${currentVillageOwner}/buildings`), {
+          goldMines,
+          rockets,
+          statues,
+          damaged
+        });
+     
+        await addXP(userName, 30);
+        isAttacking = false;
+        placingItem = null;
+        alert('¡Bomba lanzada! Área dañada. +30 XP');
+      } catch (error) {
+        console.error('Error lanzando bomba:', error);
+        alert('Error al lanzar la bomba.');
+      }
    
-      // Dar XP por colocar
-      await addXP(currentVillageOwner, 50);
-   
-      // Remover del inventario
-      const inventoryRef = ref(db, `users/${userName}/inventory/items`);
-      const snap = await get(inventoryRef);
-      let items = snap.exists() ? snap.val() : [];
-      const index = items.indexOf('statue');
-      if (index > -1) items.splice(index, 1);
-      await set(inventoryRef, items);
-   
-      placingItem = null;
-   
-      alert('¡Estatua Moai colocada! +50 XP');
-    } catch (error) {
-      console.error('Error colocando estatua:', error);
-      alert('Error al colocar la estatua.');
+      hideLoading();
     }
- 
-    hideLoading();
   }
 }
 // Funciones de la tienda
@@ -2546,6 +2740,23 @@ window.buyRocket = async function() {
   closeShop();
   alert('Haz click en una celda verde para colocar el cohete');
 }
+window.buyShovel = async function() {
+  const cost = 50;
+  if (currentGold < cost) {
+    alert(`Necesitas ${cost} de oro. Tienes ${currentGold}.`);
+    return;
+  }
+  currentGold -= cost;
+  await set(ref(db, `users/${currentVillageOwner}/resources`), { gold: currentGold, lastUpdate: Date.now() });
+  updateResourcesDisplay();
+  const inventoryRef = ref(db, `users/${userName}/inventory/items`);
+  const snap = await get(inventoryRef);
+  let items = snap.exists() ? snap.val() : [];
+  items.push('shovel');
+  await set(inventoryRef, items);
+  closeShop();
+  alert('¡Pala comprada! Añadida a tu inventario.');
+}
 // Generar oro cada 5 segundos
 let goldInterval = null;
 function startGoldGeneration() {
@@ -2577,6 +2788,7 @@ function backToMap() {
     goldInterval = null;
   }
   placingItem = null;
+  isAttacking = false;
   setTimeout(() => {
     islandView.style.opacity = 0;
     islandView.style.pointerEvents = 'none';
