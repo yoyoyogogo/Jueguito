@@ -138,6 +138,25 @@ body.night-mode .mountain {
   background-color: #9E9E9E;
   cursor: pointer;
 }
+.particula {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: red;
+  border-radius: 50%;
+  opacity: 1;
+  animation: subir 1.5s linear forwards;
+}
+@keyframes subir {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-60px) scale(0.3);
+    opacity: 0;
+  }
+}
 #gridToggle {
   position: fixed;
   top: 20px;
@@ -1268,7 +1287,7 @@ body.night-mode .island-cell.damaged {
   <div id="attackContent">
     <h2>Elige Ataque</h2>
     <button class="attack-option" onclick="chooseAttack('rob')">Robar Oro (100 oro, roba hasta 50)</button>
-    <button class="attack-option" onclick="chooseAttack('bomb')">Lanzar Bomba (100 oro, daña 3x3)</button>
+    <button class="attack-option" onclick="chooseAttack('bomb')">Lanzar Bomba (100 oro, daña área 3x3)</button>
     <button id="closeAttack" onclick="closeAttackModal()">Cancelar</button>
   </div>
 </div>
@@ -1538,6 +1557,7 @@ let islandGridVisible = true;
 let userName = null;
 let userHasBuilt = false;
 let currentVillageOwner = null;
+let currentVillageId = null;
 let currentGold = 0;
 let goldMines = [];
 let rockets = [];
@@ -1550,6 +1570,7 @@ let placingItem = null;
 let isAttacking = false;
 let currentInventory = [];
 let firstTickDelay = 5000;
+let particleIntervals = {};
 // Variables para la isla
 let islandDragging = false;
 let islandHasDragged = false;
@@ -1976,9 +1997,11 @@ window.openGlobalShop = async function() {
   if (stock <= 0) {
     buyStatueBtn.disabled = true;
     buyStatueBtn.textContent = 'Agotado';
+    buyStatueBtn.style.background = '#ccc';
   } else {
     buyStatueBtn.disabled = false;
     buyStatueBtn.textContent = 'Comprar';
+    buyStatueBtn.style.background = '#4CAF50';
   }
 }
 window.closeGlobalShop = function() {
@@ -2022,7 +2045,6 @@ window.buyStatue = async function() {
       }
     });
     if (!transactionResult.committed) {
-      alert('La estatua se agotó');
       hideLoading();
       return;
     }
@@ -2085,8 +2107,9 @@ window.closeInventory = function() {
   inventoryModal.style.display = 'none';
 }
 // Funcion de ataque
-window.openAttackModal = function() {
+window.openAttackModal = async function() {
   attackModal.style.display = 'flex';
+  await set(ref(db, `villages/${currentVillageId}/underAttack`), true);
 }
 window.chooseAttack = async function(type) {
   closeAttackModal();
@@ -2100,6 +2123,7 @@ window.chooseAttack = async function(type) {
     let attackerGold = attackerSnap.exists() ? attackerSnap.val().gold : 0;
     if (attackerGold < 100) {
       alert('No tienes suficiente oro para atacar.');
+      await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
       hideLoading();
       return;
     }
@@ -2112,6 +2136,7 @@ window.chooseAttack = async function(type) {
       let stealAmount = Math.min(50, Math.floor(victimGold * 0.1));
       if (stealAmount <= 0) {
         alert('No hay suficiente oro para robar en esta aldea.');
+        await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
         hideLoading();
         return;
       }
@@ -2123,20 +2148,25 @@ window.chooseAttack = async function(type) {
       currentGold = victimGold;
       updateResourcesDisplay();
       alert(`¡Ataque exitoso! Robaste ${stealAmount} oro. +20 XP`);
+      await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
     } else if (type === 'bomb') {
       // Lanzar bomba
       isAttacking = true;
       placingItem = 'bomb';
+      hideLoading();
       alert('Haz click en una celda del mapa enemigo para lanzar la bomba (rango 3x3)');
+      return; // No hideLoading yet
     }
   } catch(error) {
     console.error('Error en ataque:', error);
     alert('Error al realizar el ataque.');
+    await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
   }
   hideLoading();
 }
-window.closeAttackModal = function() {
+window.closeAttackModal = async function() {
   attackModal.style.display = 'none';
+  await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
 }
 // Crear mapa con bordes
 let map = [];
@@ -2189,6 +2219,7 @@ onValue(villagesRef, (snapshot) => {
       const r = village.row;
       const c = village.col;
       const owner = village.owner;
+      const underAttack = village.underAttack || false;
    
       if (map[r] && map[r][c]) {
         map[r][c].building = 'house';
@@ -2203,12 +2234,37 @@ onValue(villagesRef, (snapshot) => {
           nameLabel.className = 'owner-name';
           nameLabel.textContent = owner;
           cell.appendChild(nameLabel);
+
+          if (underAttack) {
+            startParticles(key, cell);
+          } else {
+            stopParticles(key);
+          }
         }
       }
     });
   }
   hideLoading();
 });
+function startParticles(villageId, cell) {
+  if (particleIntervals[villageId]) return;
+  particleIntervals[villageId] = setInterval(() => {
+    const p = document.createElement('div');
+    p.classList.add('particula');
+    p.style.left = `${Math.random() * cell.offsetWidth}px`;
+    p.style.top = `${Math.random() * cell.offsetHeight}px`;
+    p.style.animationDuration = `${1 + Math.random()}s`;
+    p.style.background = `rgb(${150 + Math.random()*100}, 0, 0)`;
+    cell.appendChild(p);
+    p.addEventListener('animationend', () => p.remove());
+  }, 100);
+}
+function stopParticles(villageId) {
+  if (particleIntervals[villageId]) {
+    clearInterval(particleIntervals[villageId]);
+    delete particleIntervals[villageId];
+  }
+}
 // Cargar recursos del usuario cuando entra a su isla
 async function loadUserResources(owner) {
   if (owner !== userName) {
@@ -2335,6 +2391,7 @@ async function handleCellClick(cell) {
   if (hasDragged) return;
   const r = cell.dataset.row;
   const c = cell.dataset.col;
+  currentVillageId = `${r}-${c}`;
   if (map[r][c].building === 'house') {
     openIsland(map[r][c].owner);
     return;
@@ -2680,10 +2737,12 @@ async function handleIslandCellClick(cell) {
         await addXP(userName, 30);
         isAttacking = false;
         placingItem = null;
+        await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
         alert('¡Bomba lanzada! Área dañada. +30 XP');
       } catch (error) {
         console.error('Error lanzando bomba:', error);
         alert('Error al lanzar la bomba.');
+        await set(ref(db, `villages/${currentVillageId}/underAttack`), false);
       }
    
       hideLoading();
@@ -2789,6 +2848,7 @@ function backToMap() {
   }
   placingItem = null;
   isAttacking = false;
+  if (currentVillageId) set(ref(db, `villages/${currentVillageId}/underAttack`), false);
   setTimeout(() => {
     islandView.style.opacity = 0;
     islandView.style.pointerEvents = 'none';
