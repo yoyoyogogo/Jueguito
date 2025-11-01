@@ -1990,10 +1990,14 @@ window.openGlobalShop = async function() {
     alert('Debes iniciar sesión para acceder a la tienda global');
     return;
   }
-  globalShopModal.style.display = 'flex';
   const globalShopRef = ref(db, 'globalShop/statue');
-  const snapshot = await get(globalShopRef);
-  const stock = snapshot.exists() ? snapshot.val().stock : 0;
+  let snapshot = await get(globalShopRef);
+  if (!snapshot.exists()) {
+    await set(globalShopRef, {stock: 10});
+    snapshot = await get(globalShopRef);
+  }
+  const stock = snapshot.val().stock || 0;
+  globalShopModal.style.display = 'flex';
   if (stock <= 0) {
     buyStatueBtn.disabled = true;
     buyStatueBtn.textContent = 'Agotado';
@@ -2028,40 +2032,97 @@ async function getCurrentGold() {
 window.buyStatue = async function() {
   const cost = 500;
   showLoading();
+  
   try {
+    // Verificar oro primero
     let gold = await getCurrentGold();
+    console.log('Gold actual:', gold);
+    
     if (gold < cost) {
       alert(`Necesitas ${cost} de oro. Tienes ${gold}.`);
       hideLoading();
       return;
     }
+
+    // Transacción para decrementar stock
     const globalShopRef = ref(db, 'globalShop/statue');
+    
+    console.log('Iniciando transacción...');
+    
     const transactionResult = await runTransaction(globalShopRef, (currentData) => {
-      if (currentData && currentData.stock > 0) {
-        currentData.stock -= 1;
-        return currentData;
-      } else {
-        return undefined; // Abort transaction
+      console.log('Datos actuales en transacción:', currentData);
+      
+      // Si no existe data, crear con stock 0 (abortar compra)
+      if (currentData === null) {
+        console.log('No hay datos, abortando');
+        return null;
       }
+      
+      // Verificar stock
+      const currentStock = currentData.stock || 0;
+      console.log('Stock actual:', currentStock);
+      
+      if (currentStock <= 0) {
+        console.log('Sin stock, abortando');
+        return; // Abort - devolver undefined
+      }
+      
+      // Decrementar stock
+      const newData = {
+        stock: currentStock - 1
+      };
+      console.log('Nuevo stock:', newData.stock);
+      return newData;
     });
+
+    console.log('Transacción completada:', transactionResult);
+    console.log('Committed:', transactionResult.committed);
+
+    // Verificar si la transacción fue exitosa
     if (!transactionResult.committed) {
+      console.log('Transacción no committed');
+      alert('Lo sentimos, el artículo está agotado.');
+      buyStatueBtn.disabled = true;
+      buyStatueBtn.textContent = 'Agotado';
+      buyStatueBtn.style.background = '#ccc';
       hideLoading();
       return;
     }
+
+    console.log('Compra exitosa, actualizando recursos...');
+
+    // Si llegamos aquí, la compra fue exitosa
+    // Descontar oro
     gold -= cost;
     await set(ref(db, `users/${userName}/resources`), {gold: gold, lastUpdate: Date.now()});
+    console.log('Oro actualizado');
+
+    // Actualizar oro local si estamos en nuestra isla
+    if (currentVillageOwner === userName) {
+      currentGold = gold;
+      updateResourcesDisplay();
+    }
+
+    // Añadir estatua al inventario
+    console.log('Añadiendo al inventario...');
     const inventoryRef = ref(db, `users/${userName}/inventory/items`);
     const snap = await get(inventoryRef);
     let items = snap.exists() ? snap.val() : [];
+    console.log('Items actuales:', items);
     items.push('statue');
     await set(inventoryRef, items);
+    console.log('Inventario actualizado:', items);
+
     closeGlobalShop();
     alert('¡Compra exitosa! La estatua Moai ha sido añadida a tu inventario. Entra a tu aldea y abre el inventario para colocarla.');
+    
+    hideLoading();
   } catch (error) {
-    console.error('Error comprando estatua:', error);
-    alert('Error al comprar la estatua.');
+    console.error('Error completo comprando estatua:', error);
+    console.error('Error stack:', error.stack);
+    alert('Error al comprar la estatua: ' + error.message);
+    hideLoading();
   }
-  hideLoading();
 }
 // Funciones de Inventario
 window.openInventory = async function() {
