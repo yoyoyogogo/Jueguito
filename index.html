@@ -128,11 +128,61 @@ body.night-mode .mountain { background-color: #4a4a4a; }
   color: #000;
 }
 body.night-mode .gold-mine { background-color: #b39700; }
-.rocket-launcher, .statue {
+.rocket-launcher, .statue, .flower, .deflector-tower {
   background-color: #666;
   color: white;
 }
-body.night-mode .rocket-launcher, body.night-mode .statue { background-color: #444; }
+body.night-mode .rocket-launcher, body.night-mode .statue, body.night-mode .flower, body.night-mode .deflector-tower { background-color: #444; }
+.deflector-tower {
+  background-color: #00CED1;
+  color: white;
+  animation: deflectorPulse 2s infinite;
+}
+body.night-mode .deflector-tower { background-color: #008B8B; }
+@keyframes deflectorPulse {
+  0%, 100% { box-shadow: 0 0 5px #00CED1; }
+  50% { box-shadow: 0 0 15px #00CED1, 0 0 25px #00CED1; }
+}
+@keyframes splashAnimation {
+  0% { transform: scale(0.5); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+/* Notificación flotante estilo COD */
+.xp-notification {
+  position: fixed;
+  font-size: 32px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 
+    0 0 10px rgba(255, 215, 0, 0.8),
+    0 0 20px rgba(255, 215, 0, 0.6),
+    2px 2px 4px rgba(0, 0, 0, 0.8);
+  z-index: 10005;
+  pointer-events: none;
+  animation: xpFloat 2s ease-out forwards;
+  font-family: 'Arial Black', sans-serif;
+  letter-spacing: 2px;
+}
+@keyframes xpFloat {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  20% {
+    transform: translateY(-30px) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-120px) scale(0.8);
+    opacity: 0;
+  }
+}
+.flower {
+  background-color: #90EE90;
+  color: white;
+}
+body.night-mode .flower { background-color: #4a7c4a; }
 .damaged {
   background-color: #8B4513;
 }
@@ -612,7 +662,17 @@ body.night-mode .center { background-color: #5d2e0b; }
       <div class="shop-item-info">
         <div class="shop-item-name">🛠️ Pala</div>
         <div class="shop-item-desc">Repara áreas dañadas en tu aldea</div>
-        <div class="shop-item-cost">💰 50 Oro</div>
+        <div class="shop-item-desc" style="margin-top: 8px;">
+          <strong>Nivel de reparación:</strong>
+          <div style="display: flex; gap: 5px; margin-top: 5px;">
+            <button class="shovel-level-btn active" data-level="1" style="padding: 8px 15px; border: 2px solid #4CAF50; background: white; border-radius: 5px; cursor: pointer; font-weight: bold; color: #333; font-size: 14px;">x1</button>
+            <button class="shovel-level-btn" data-level="3" style="padding: 8px 15px; border: 2px solid #ccc; background: white; border-radius: 5px; cursor: pointer; color: #333; font-size: 14px;">x3</button>
+            <button class="shovel-level-btn" data-level="5" style="padding: 8px 15px; border: 2px solid #ccc; background: white; border-radius: 5px; cursor: pointer; color: #333; font-size: 14px;">x5</button>
+            <button class="shovel-level-btn" data-level="8" style="padding: 8px 15px; border: 2px solid #ccc; background: white; border-radius: 5px; cursor: pointer; color: #333; font-size: 14px;">x8</button>
+            <button class="shovel-level-btn" data-level="10" style="padding: 8px 12px; border: 2px solid #ccc; background: white; border-radius: 5px; cursor: pointer; color: #333; font-size: 14px;">x10</button>
+          </div>
+        </div>
+        <div class="shop-item-cost" id="shovelCost">💰 50 Oro</div>
       </div>
       <button id="buyShovelBtn">Comprar</button>
     </div>
@@ -646,6 +706,24 @@ body.night-mode .center { background-color: #5d2e0b; }
         <div class="shop-item-cost">💰 3000 Oro</div>
       </div>
       <button id="buyRocketAmmoBtn">Comprar</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">🌸 Flor Decorativa</div>
+        <div class="shop-item-desc">Hermosa flor para decorar tu aldea</div>
+        <div class="shop-item-desc">Stock: <span id="flowerStock">15</span></div>
+        <div class="shop-item-cost">💰 200 Oro</div>
+      </div>
+      <button id="buyFlowerBtn">Comprar</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <div class="shop-item-name">🛡️ Torre Desviadora</div>
+        <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 3 celdas)</div>
+        <div class="shop-item-desc">Stock: <span id="deflectorTowerStock">5</span></div>
+        <div class="shop-item-cost">💰 1500 Oro</div>
+      </div>
+      <button id="buyDeflectorTowerBtn">Comprar</button>
     </div>
     <button class="modal-close" id="closeGlobalShop">Cerrar</button>
   </div>
@@ -768,7 +846,7 @@ const state = {
   hasBuilt: false,
   currentVillage: { owner: null, id: null },
   resources: { gold: 0 },
-  buildings: { mines: [], rocketLaunchers: [], statues: [], damaged: [] },
+  buildings: { mines: [], rocketLaunchers: [], statues: [], flowers: [], deflectorTowers: [], damaged: [] },
   level: { level: 1, xp: 0, needed: 100 },
   inventory: [],
   placing: null,
@@ -782,7 +860,9 @@ const state = {
   map: [],
   cells: {},
   intervals: { gold: null, particles: {} },
-  skipCentering: false
+  skipCentering: false,
+  shovelLevel: 1, // Nivel de la pala (x1 a x5)
+  isProcessingClick: false // Prevenir clics múltiples
 };
 const ACHIEVEMENTS = {
   firstVillage: { id: 'firstVillage', name: 'Primer Constructor', desc: 'Construye tu primera aldea', icon: '🏰', reward: '+50 XP' },
@@ -793,7 +873,8 @@ const ACHIEVEMENTS = {
   millionaire: { id: 'millionaire', name: 'Millonario', desc: 'Acumula 1000 de oro', icon: '💎', reward: '+100 XP' },
   maxMines: { id: 'maxMines', name: 'Imperio Minero', desc: 'Construye el máximo de minas (2)', icon: '⚒️', reward: '+50 XP' },
   explorer: { id: 'explorer', name: 'Explorador', desc: 'Visita la aldea de otro jugador', icon: '🗺️', reward: '+25 XP' },
-  rocketLauncher: { id: 'rocketLauncher', name: 'Pionero Espacial', desc: 'Construye el lanza cohetes', icon: '🚀', reward: '+500 XP' }
+  rocketLauncher: { id: 'rocketLauncher', name: 'Pionero Espacial', desc: 'Construye el lanza cohetes', icon: '🚀', reward: '+500 XP' },
+  deflectorTower: { id: 'deflectorTower', name: 'Escudo Defensivo', desc: 'Construye la Torre Desviadora', icon: '🛡️', reward: '+300 XP' }
 };
 // DOM Elements
 const $ = id => document.getElementById(id);
@@ -869,10 +950,21 @@ function stopParticles(id) {
 // Main Map Interactions
 async function handleMainClick(cell) {
   if (state.drag.moved) return;
+  
+  // CRÍTICO: Prevenir clics múltiples mientras se procesa
+  if (state.isProcessingClick) {
+    return;
+  }
+  
   const r = +cell.dataset.row, c = +cell.dataset.col;
  
   if (state.map[r][c].building === 'house') {
     openIsland(state.map[r][c].owner);
+    return;
+  }
+ 
+  if (!state.user) {
+    alert('Debes iniciar sesión para construir tu aldea');
     return;
   }
  
@@ -881,12 +973,54 @@ async function handleMainClick(cell) {
     return;
   }
  
+  // Marcar como procesando
+  state.isProcessingClick = true;
   loading(true);
-  const id = `${r}-${c}`;
-  await set(ref(db, `villages/${id}`), { row: r, col: c, owner: state.user, timestamp: Date.now() });
-  state.hasBuilt = true;
-  await unlockAchievement('firstVillage');
-  loading(false);
+  
+  try {
+    const id = `${r}-${c}`;
+    
+    // CRÍTICO: Verificar si ya existe una aldea en esta posición
+    const existingVillageSnap = await get(ref(db, `villages/${id}`));
+    if (existingVillageSnap.exists()) {
+      const existingVillage = existingVillageSnap.val();
+      loading(false);
+      state.isProcessingClick = false;
+      alert(`Ya existe una aldea en esta posición (${existingVillage.owner}). Por favor, elige otra ubicación.`);
+      // Actualizar el mapa local para reflejar la aldea existente
+      state.map[r][c].building = 'house';
+      state.map[r][c].owner = existingVillage.owner;
+      renderMap();
+      return;
+    }
+    
+    // Verificar si el usuario ya tiene una aldea
+    const allVillagesSnap = await get(ref(db, 'villages'));
+    if (allVillagesSnap.exists()) {
+      const villages = allVillagesSnap.val();
+      for (const villageId in villages) {
+        if (villages[villageId].owner === state.user) {
+          loading(false);
+          state.isProcessingClick = false;
+          alert('Ya tienes una aldea construida. Solo puedes tener una aldea.');
+          state.hasBuilt = true;
+          return;
+        }
+      }
+    }
+    
+    // Crear la aldea
+    await set(ref(db, `villages/${id}`), { row: r, col: c, owner: state.user, timestamp: Date.now() });
+    state.hasBuilt = true;
+    await unlockAchievement('firstVillage');
+    loading(false);
+    state.isProcessingClick = false;
+  } catch (error) {
+    console.error('Error al crear aldea:', error);
+    alert('Error al crear la aldea. Por favor, intenta de nuevo.');
+    loading(false);
+    state.isProcessingClick = false;
+  }
 }
 // Island Functions
 async function openIsland(owner) {
@@ -950,6 +1084,14 @@ function renderIsland() {
       const c = grid.querySelector(`[data-row="${s.row}"][data-col="${s.col}"]`);
       if (c) { c.classList.add('statue'); c.textContent = '🗿'; }
     });
+    state.buildings.flowers.forEach(f => {
+      const c = grid.querySelector(`[data-row="${f.row}"][data-col="${f.col}"]`);
+      if (c) { c.classList.add('flower'); c.textContent = '🌸'; }
+    });
+    state.buildings.deflectorTowers.forEach(dt => {
+      const c = grid.querySelector(`[data-row="${dt.row}"][data-col="${dt.col}"]`);
+      if (c) { c.classList.add('deflector-tower'); c.textContent = '🛡️'; }
+    });
     state.buildings.damaged.forEach(d => {
       const c = grid.querySelector(`[data-row="${d.row}"][data-col="${d.col}"]`);
       if (c) c.classList.add('damaged');
@@ -961,16 +1103,26 @@ async function handleIslandClick(cell) {
   const r = +cell.dataset.row, c = +cell.dataset.col;
  
   if (r === 10 && c === 10) return alert('No puedes interactuar con el castillo');
-  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('statue')) {
+  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower')) {
     return alert('Ya hay una estructura aquí');
+  }
+  
+  // BUGFIX: No permitir colocar estructuras en bloques destruidos
+  if (cell.classList.contains('damaged') && (state.placing === 'mine' || state.placing === 'rocketLauncher' || state.placing === 'statue' || state.placing === 'flower' || state.placing === 'deflectorTower')) {
+    return alert('No puedes construir en un área dañada. Repárala primero con una pala.');
   }
  
   const own = state.currentVillage.owner === state.user;
  
   if (own && state.placing === 'mine') await buildMine(r, c, cell);
   else if (own && state.placing === 'rocketLauncher') await buildRocketLauncher(r, c, cell);
+  else if (own && state.placing === 'deflectorTower') await buildDeflectorTower(r, c, cell);
   else if (own && state.placing === 'statue') await placeStatue(r, c, cell);
-  else if (own && state.placing === 'shovel' && cell.classList.contains('damaged')) await repair(r, c, cell);
+  else if (own && state.placing === 'flower') await placeFlower(r, c, cell);
+  else if (own && state.placing && state.placing.startsWith('shovel') && cell.classList.contains('damaged')) {
+    const shovelLevel = parseInt(state.placing.split('_')[1]) || 1;
+    await repair(r, c, cell, shovelLevel);
+  }
   else if (!own && state.placing === 'bomb') await launchBomb(r, c);
   else if (!own && state.placing === 'rocket_attack') await launchRocketAttack(r, c);
 }
@@ -981,7 +1133,9 @@ async function buildMine(r, c, cell) {
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('gold-mine');
@@ -1000,7 +1154,9 @@ async function buildRocketLauncher(r, c, cell) {
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('rocket-launcher');
@@ -1012,13 +1168,35 @@ async function buildRocketLauncher(r, c, cell) {
   alert('¡Lanza Cohetes construido! +100 XP');
   loading(false);
 }
+async function buildDeflectorTower(r, c, cell) {
+  loading(true);
+  state.buildings.deflectorTowers.push({row: r, col: c});
+  await set(ref(db, `users/${state.user}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  cell.classList.add('deflector-tower');
+  cell.textContent = '🛡️';
+  await addXP(75);
+  state.placing = null;
+  updateShop();
+  if (state.buildings.deflectorTowers.length === 1) await unlockAchievement('deflectorTower');
+  alert('¡Torre Desviadora construida! Desvía cohetes enemigos. +75 XP');
+  loading(false);
+}
 async function placeStatue(r, c, cell) {
   loading(true);
   state.buildings.statues.push({row: r, col: c});
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('statue');
@@ -1033,24 +1211,99 @@ async function placeStatue(r, c, cell) {
   alert('¡Estatua Moai colocada! +50 XP');
   loading(false);
 }
-async function repair(r, c, cell) {
+async function placeFlower(r, c, cell) {
   loading(true);
-  state.buildings.damaged = state.buildings.damaged.filter(d => !(d.row === r && d.col === c));
-  await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
+  state.buildings.flowers.push({row: r, col: c});
+  await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
-  cell.classList.remove('damaged');
-  await addXP(10);
+  cell.classList.add('flower');
+  cell.textContent = '🌸';
+  await addXP(30);
  
   const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
-  items.splice(items.indexOf('shovel'), 1);
+  items.splice(items.indexOf('flower'), 1);
   await set(ref(db, `users/${state.user}/inventory/items`), items);
  
   state.placing = null;
-  alert('¡Área reparada! +10 XP');
+  alert('¡Flor decorativa colocada! +30 XP');
+  loading(false);
+}
+async function repair(r, c, cell, shovelLevel = 1) {
+  loading(true);
+  
+  // Obtener celdas dañadas cercanas según el nivel de la pala
+  const grid = $('islandGrid');
+  const repairedCells = [];
+  const cellsToRepair = [];
+  
+  // Primero, reparar la celda clickeada
+  cellsToRepair.push({row: r, col: c, cell: cell});
+  
+  // Buscar celdas dañadas adicionales según el nivel
+  if (shovelLevel > 1) {
+    const directions = [
+      {dr: -1, dc: 0}, {dr: 1, dc: 0}, {dr: 0, dc: -1}, {dr: 0, dc: 1},
+      {dr: -1, dc: -1}, {dr: -1, dc: 1}, {dr: 1, dc: -1}, {dr: 1, dc: 1}
+    ];
+    
+    let found = 1;
+    let searchRadius = 1;
+    
+    while (found < shovelLevel && searchRadius <= 3) {
+      for (const dir of directions) {
+        if (found >= shovelLevel) break;
+        
+        const nr = r + (dir.dr * searchRadius);
+        const nc = c + (dir.dc * searchRadius);
+        
+        if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20) {
+          const nearCell = grid.querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+          if (nearCell && nearCell.classList.contains('damaged') && 
+              !cellsToRepair.some(ct => ct.row === nr && ct.col === nc)) {
+            cellsToRepair.push({row: nr, col: nc, cell: nearCell});
+            found++;
+            if (found >= shovelLevel) break;
+          }
+        }
+      }
+      searchRadius++;
+    }
+  }
+  
+  // Reparar todas las celdas encontradas
+  cellsToRepair.forEach(({row, col, cell}) => {
+    state.buildings.damaged = state.buildings.damaged.filter(d => !(d.row === row && d.col === col));
+    cell.classList.remove('damaged');
+    repairedCells.push({row, col});
+  });
+  
+  await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  
+  const xpGained = cellsToRepair.length * 10;
+  await addXP(xpGained);
+ 
+  const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
+  const shovelItem = items.find(item => item.startsWith('shovel'));
+  if (shovelItem) {
+    items.splice(items.indexOf(shovelItem), 1);
+  }
+  await set(ref(db, `users/${state.user}/inventory/items`), items);
+ 
+  state.placing = null;
+  alert(`¡${cellsToRepair.length} área(s) reparada(s)! +${xpGained} XP`);
   loading(false);
 }
 // Attack Functions
@@ -1062,7 +1315,7 @@ async function launchBomb(r, c) {
       if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
         const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
         if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-            !target.classList.contains('statue') && !target.classList.contains('damaged')) {
+            !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
           state.buildings.damaged.push({row: nr, col: nc});
           target.classList.add('damaged');
         }
@@ -1072,14 +1325,37 @@ async function launchBomb(r, c) {
   await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
-  await addXP(30);
+  
+  // Dar XP al atacante (state.user), no al dueño de la aldea
+  const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+  if (attackerLevelSnap.exists()) {
+    let attackerLevel = attackerLevelSnap.val();
+    attackerLevel.xp = (attackerLevel.xp || 0) + 30;
+    
+    // Verificar si sube de nivel
+    while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+      attackerLevel.xp -= attackerLevel.needed;
+      attackerLevel.level++;
+      attackerLevel.needed = attackerLevel.level * 100;
+    }
+    
+    if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+    
+    await set(ref(db, `users/${state.user}/level`), attackerLevel);
+  }
+  
   state.attacking = false;
   state.placing = null;
   await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
-  alert('¡Bomba lanzada! Área dañada. +30 XP');
+  
+  // Mostrar notificación de XP en el centro de la pantalla
+  showXPNotification(30, window.innerWidth / 2 - 50, window.innerHeight / 2);
+  
   loading(false);
 }
 async function launchRocketAttack(r, c) {
@@ -1094,6 +1370,21 @@ async function launchRocketAttack(r, c) {
     await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
     loading(false);
     return;
+  }
+  
+  // NUEVA LÓGICA: Verificar si hay Torre Desviadora que pueda interceptar
+  const deflectorTowers = state.buildings.deflectorTowers || [];
+  let deflectorTower = null;
+  
+  for (const tower of deflectorTowers) {
+    // Calcular distancia entre el cohete y la torre
+    const distance = Math.sqrt(Math.pow(r - tower.row, 2) + Math.pow(c - tower.col, 2));
+    
+    // Si la torre está dentro del rango de 3 celdas, puede desviar el cohete
+    if (distance <= 3) {
+      deflectorTower = tower;
+      break;
+    }
   }
   
   // Restar una munición
@@ -1255,10 +1546,282 @@ async function launchRocketAttack(r, c) {
   setTimeout(() => {
     fallingRocket.style.top = targetCenterY - 20 + 'px';
   }, 100);
- 
-  // Paso 6: EXPLOSIÓN con efectos
-  await new Promise(resolve => setTimeout(resolve, 1500));
- 
+
+  // VERIFICAR SI HAY TORRE DESVIADORA
+  if (deflectorTower) {
+    // Esperar a que el cohete esté a mitad de camino
+    await new Promise(resolve => setTimeout(resolve, 750));
+    
+    // ALEATORIO: 70% desvío completo, 30% desvío parcial con daño
+    const deflectionSuccess = Math.random() < 0.7;
+    
+    // Activar animación de la torre
+    const towerCell = $('islandGrid').querySelector(`[data-row="${deflectorTower.row}"][data-col="${deflectorTower.col}"]`);
+    if (towerCell) {
+      // Flash intenso de la torre (más débil si falla)
+      const intensity = deflectionSuccess ? '0 0 30px #00CED1, 0 0 50px #00CED1, 0 0 70px #00CED1' : '0 0 15px #00CED1, 0 0 25px #00CED1';
+      towerCell.style.boxShadow = intensity;
+      towerCell.style.transform = 'scale(1.3)';
+      towerCell.style.transition = 'all 0.3s ease';
+      
+      // Crear rayo de energía desde la torre al cohete
+      const towerRect = towerCell.getBoundingClientRect();
+      const towerCenterX = towerRect.left + towerRect.width / 2;
+      const towerCenterY = towerRect.top + towerRect.height / 2;
+      
+      const energyBeam = document.createElement('div');
+      const rocketCurrentLeft = parseFloat(fallingRocket.style.left) + 20;
+      const rocketCurrentTop = parseFloat(fallingRocket.style.top) + 20;
+      
+      energyBeam.style.position = 'fixed';
+      energyBeam.style.left = towerCenterX + 'px';
+      energyBeam.style.top = towerCenterY + 'px';
+      energyBeam.style.width = '5px';
+      const distance = Math.sqrt(Math.pow(rocketCurrentLeft - towerCenterX, 2) + Math.pow(rocketCurrentTop - towerCenterY, 2));
+      energyBeam.style.height = distance + 'px';
+      // Rayo más débil si falla
+      const beamColor = deflectionSuccess ? 'linear-gradient(to bottom, rgba(0, 255, 255, 0.9), rgba(0, 206, 209, 0.5))' : 'linear-gradient(to bottom, rgba(0, 255, 255, 0.5), rgba(0, 206, 209, 0.3))';
+      energyBeam.style.background = beamColor;
+      energyBeam.style.boxShadow = '0 0 20px #00CED1, 0 0 40px #00FFFF';
+      energyBeam.style.zIndex = '10000';
+      energyBeam.style.transformOrigin = 'top center';
+      const angle = Math.atan2(rocketCurrentTop - towerCenterY, rocketCurrentLeft - towerCenterX) * (180 / Math.PI) + 90;
+      energyBeam.style.transform = `rotate(${angle}deg)`;
+      document.body.appendChild(energyBeam);
+      
+      setTimeout(() => {
+        towerCell.style.boxShadow = '';
+        towerCell.style.transform = '';
+        if (document.body.contains(energyBeam)) energyBeam.remove();
+      }, 500);
+    }
+    
+    if (deflectionSuccess) {
+      // DESVÍO COMPLETO: Cohete va al borde del mapa
+      fallingRocket.style.transition = 'all 1.0s ease-out';
+      
+      // Determinar el borde más cercano para desviar
+      const viewportRect = $('islandViewport').getBoundingClientRect();
+      const currentLeft = parseFloat(fallingRocket.style.left);
+      const currentTop = parseFloat(fallingRocket.style.top);
+      
+      // Calcular distancias a cada borde
+      const distToRight = viewportRect.right - currentLeft;
+      const distToLeft = currentLeft - viewportRect.left;
+      const distToTop = currentTop - viewportRect.top;
+      const distToBottom = viewportRect.bottom - currentTop;
+      
+      // Encontrar el borde más cercano
+      const minDist = Math.min(distToRight, distToLeft, distToTop, distToBottom);
+      
+      let seaX, seaY;
+      if (minDist === distToRight) {
+        seaX = viewportRect.right - 50;
+        seaY = currentTop + (Math.random() - 0.5) * 100;
+      } else if (minDist === distToLeft) {
+        seaX = viewportRect.left + 50;
+        seaY = currentTop + (Math.random() - 0.5) * 100;
+      } else if (minDist === distToTop) {
+        seaX = currentLeft + (Math.random() - 0.5) * 100;
+        seaY = viewportRect.top + 50;
+      } else {
+        seaX = currentLeft + (Math.random() - 0.5) * 100;
+        seaY = viewportRect.bottom - 50;
+      }
+      
+      fallingRocket.style.left = seaX + 'px';
+      fallingRocket.style.top = seaY + 'px';
+      fallingRocket.style.transform = 'rotate(45deg)';
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // EXPLOSIÓN EN EL MAR (EN EL BORDE DEL MAPA)
+      fallingRocket.remove();
+      
+      // Efecto de temblor
+      const viewport = $('islandViewport');
+      viewport.classList.add('shake');
+      setTimeout(() => viewport.classList.remove('shake'), 500);
+      
+      // Crear explosión principal (fuego + agua)
+      const mainExplosion = document.createElement('div');
+      mainExplosion.style.position = 'fixed';
+      mainExplosion.style.left = (seaX - 30) + 'px';
+      mainExplosion.style.top = (seaY - 30) + 'px';
+      mainExplosion.style.fontSize = '80px';
+      mainExplosion.style.zIndex = '10003';
+      mainExplosion.textContent = '💥';
+      mainExplosion.style.animation = 'splashAnimation 0.8s ease-out';
+      document.body.appendChild(mainExplosion);
+      
+      // Crear explosión de agua
+      const waterSplash = document.createElement('div');
+      waterSplash.style.position = 'fixed';
+      waterSplash.style.left = seaX + 'px';
+      waterSplash.style.top = seaY + 'px';
+      waterSplash.style.fontSize = '60px';
+      waterSplash.style.zIndex = '10002';
+      waterSplash.textContent = '💦';
+      waterSplash.style.animation = 'splashAnimation 1s ease-out';
+      document.body.appendChild(waterSplash);
+      
+      // Crear partículas de agua
+      for (let i = 0; i < 15; i++) {
+        const droplet = document.createElement('div');
+        droplet.style.position = 'fixed';
+        droplet.style.left = seaX + 'px';
+        droplet.style.top = seaY + 'px';
+        droplet.style.fontSize = '24px';
+        droplet.style.zIndex = '10001';
+        droplet.textContent = '💧';
+        
+        const angle = (Math.PI * 2 * i) / 15;
+        const distance = 50 + Math.random() * 50;
+        const endX = seaX + Math.cos(angle) * distance;
+        const endY = seaY + Math.sin(angle) * distance;
+        
+        droplet.style.transition = 'all 0.8s ease-out';
+        document.body.appendChild(droplet);
+        
+        setTimeout(() => {
+          droplet.style.left = endX + 'px';
+          droplet.style.top = endY + 'px';
+          droplet.style.opacity = '0';
+          droplet.style.transform = 'scale(0.3)';
+        }, 50);
+        
+        setTimeout(() => droplet.remove(), 900);
+      }
+      
+      // Efecto de onda expansiva azul
+      const shockwave = document.createElement('div');
+      shockwave.style.position = 'fixed';
+      shockwave.style.left = (seaX - 50) + 'px';
+      shockwave.style.top = (seaY - 50) + 'px';
+      shockwave.style.width = '100px';
+      shockwave.style.height = '100px';
+      shockwave.style.borderRadius = '50%';
+      shockwave.style.border = '3px solid rgba(0, 150, 255, 0.8)';
+      shockwave.style.zIndex = '10000';
+      shockwave.style.transition = 'all 0.6s ease-out';
+      document.body.appendChild(shockwave);
+      
+      setTimeout(() => {
+        shockwave.style.width = '300px';
+        shockwave.style.height = '300px';
+        shockwave.style.left = (seaX - 150) + 'px';
+        shockwave.style.top = (seaY - 150) + 'px';
+        shockwave.style.opacity = '0';
+      }, 50);
+      
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      mainExplosion.remove();
+      waterSplash.remove();
+      shockwave.remove();
+      
+      // Mensaje de éxito (notificación flotante)
+      showXPNotification(0, window.innerWidth / 2 - 100, window.innerHeight / 2, '🛡️ DESVIADO AL MAR');
+      
+      state.attacking = false;
+      state.placing = null;
+      await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+      loading(false);
+      return;
+    } else {
+      // DESVÍO PARCIAL: Cohete desviado pero cae cerca del mapa (daño reducido 3x3)
+      fallingRocket.style.transition = 'all 0.8s ease-out';
+      
+      // Desviar ligeramente del objetivo original (2-4 celdas de distancia)
+      const offsetRow = attackTarget.row + Math.floor((Math.random() - 0.5) * 6);
+      const offsetCol = attackTarget.col + Math.floor((Math.random() - 0.5) * 6);
+      const clampedRow = Math.max(0, Math.min(19, offsetRow));
+      const clampedCol = Math.max(0, Math.min(19, offsetCol));
+      
+      const deflectedCell = $('islandGrid').querySelector(`[data-row="${clampedRow}"][data-col="${clampedCol}"]`);
+      if (deflectedCell) {
+        const deflectedRect = deflectedCell.getBoundingClientRect();
+        fallingRocket.style.left = (deflectedRect.left + deflectedRect.width / 2 - 20) + 'px';
+        fallingRocket.style.top = (deflectedRect.top + deflectedRect.height / 2 - 20) + 'px';
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      fallingRocket.remove();
+      
+      // Efecto de temblor (más suave)
+      const viewport = $('islandViewport');
+      viewport.classList.add('shake');
+      setTimeout(() => viewport.classList.remove('shake'), 300);
+      
+      // Explosión en la isla
+      const finalCell = $('islandGrid').querySelector(`[data-row="${clampedRow}"][data-col="${clampedCol}"]`);
+      if (finalCell) {
+        const finalRect = finalCell.getBoundingClientRect();
+        const explosionX = finalRect.left + finalRect.width / 2;
+        const explosionY = finalRect.top + finalRect.height / 2;
+        createExplosion(explosionX, explosionY);
+      }
+      
+      // Aplicar daño REDUCIDO (3x3 en lugar de 7x7)
+      loading(true);
+      let damagedCells = 0;
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const nr = clampedRow + dx, nc = clampedCol + dy;
+          if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
+            const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+            if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
+                !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
+              state.buildings.damaged.push({row: nr, col: nc});
+              target.classList.add('damaged');
+              damagedCells++;
+            }
+          }
+        }
+      }
+      
+      await set(ref(db, `users/${attackTarget.owner}/buildings`), {
+        goldMines: state.buildings.mines,
+        rocketLaunchers: state.buildings.rocketLaunchers,
+        deflectorTowers: state.buildings.deflectorTowers,
+        statues: state.buildings.statues,
+        flowers: state.buildings.flowers,
+        damaged: state.buildings.damaged
+      });
+      
+      // Dar XP reducido al atacante
+      const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+      if (attackerLevelSnap.exists()) {
+        let attackerLevel = attackerLevelSnap.val();
+        attackerLevel.xp = (attackerLevel.xp || 0) + 15; // Menos XP que un ataque completo
+        
+        while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+          attackerLevel.xp -= attackerLevel.needed;
+          attackerLevel.level++;
+          attackerLevel.needed = attackerLevel.level * 100;
+        }
+        
+        if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+        
+        await set(ref(db, `users/${state.user}/level`), attackerLevel);
+      }
+      
+      state.attacking = false;
+      state.placing = null;
+      await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+      
+      // Mostrar notificación de XP reducido
+      showXPNotification(15, window.innerWidth / 2 - 50, window.innerHeight / 2);
+      
+      loading(false);
+      return;
+    }
+  }
+
+  // Paso 6: EXPLOSIÓN con efectos (solo si NO fue desviado)
+  await new Promise(resolve => setTimeout(resolve, 750));
+
   fallingRocket.remove();
  
   // Obtener posición final para la explosión
@@ -1283,7 +1846,7 @@ async function launchRocketAttack(r, c) {
       if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
         const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
         if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-            !target.classList.contains('statue') && !target.classList.contains('damaged')) {
+            !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
           state.buildings.damaged.push({row: nr, col: nc});
           target.classList.add('damaged');
         }
@@ -1294,20 +1857,60 @@ async function launchRocketAttack(r, c) {
   await set(ref(db, `users/${attackTarget.owner}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
     statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
  
-  await addXP(50);
+  // Dar XP al atacante (state.user), no al dueño de la aldea
+  const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+  if (attackerLevelSnap.exists()) {
+    let attackerLevel = attackerLevelSnap.val();
+    attackerLevel.xp = (attackerLevel.xp || 0) + 50;
+    
+    // Verificar si sube de nivel
+    while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+      attackerLevel.xp -= attackerLevel.needed;
+      attackerLevel.level++;
+      attackerLevel.needed = attackerLevel.level * 100;
+    }
+    
+    if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+    
+    await set(ref(db, `users/${state.user}/level`), attackerLevel);
+  }
+  
   state.attacking = false;
   state.placing = null;
   await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
  
   setTimeout(() => {
-    alert('¡Cohete lanzado! Área devastada (7x7). +50 XP');
+    // Mostrar notificación de XP en el centro
+    showXPNotification(50, window.innerWidth / 2 - 50, window.innerHeight / 2);
     loading(false);
   }, 1000);
 }
+// Función para mostrar notificación de XP estilo COD
+function showXPNotification(xp, x, y, message = '') {
+  const notification = document.createElement('div');
+  notification.className = 'xp-notification';
+  notification.style.left = x + 'px';
+  notification.style.top = y + 'px';
+  
+  if (message) {
+    notification.textContent = message;
+  } else {
+    notification.textContent = `+${xp} XP`;
+  }
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => notification.remove(), 2000);
+}
+
 function createExplosion(x, y) {
   const colors = ['#ff4500', '#ff6347', '#ff8c00', '#ffa500', '#ffff00', '#ff0000'];
   const particleCount = 50;
@@ -1353,6 +1956,7 @@ async function loadResources(owner) {
   let res = snap.exists() ? snap.val() : {gold: 100, lastUpdate: Date.now()};
   state.resources.gold = res.gold || 100;
  
+  // Solo calcular oro offline y dar XP si es TU aldea
   if (owner === state.user) {
     const buildSnap = await get(ref(db, `users/${owner}/buildings`));
     const buildings = buildSnap.exists() ? buildSnap.val() : {};
@@ -1362,6 +1966,7 @@ async function loadResources(owner) {
     const ticks = Math.floor(delta / 5000);
     if (mineCount > 0 && ticks > 0) {
       state.resources.gold += ticks * 10 * mineCount;
+      // addXP ya verifica internamente si es tu aldea, pero aquí estamos seguros
       await addXP(ticks);
       await checkAchievements();
     }
@@ -1387,12 +1992,19 @@ async function loadBuildings(owner) {
   state.buildings = {
     mines: b.goldMines || b.mines || [],
     rocketLaunchers: b.rocketLaunchers || [],
+    deflectorTowers: b.deflectorTowers || [],
     statues: b.statues || [],
+    flowers: b.flowers || [],
     damaged: b.damaged || []
   };
   updateShop();
 }
 async function addXP(amount) {
+  // CRÍTICO: Solo dar XP si estás en tu propia aldea
+  if (state.currentVillage.owner !== state.user) {
+    return; // No dar XP si estás viendo la aldea de otro jugador
+  }
+  
   let {level, xp, needed} = state.level;
   xp += amount;
  
@@ -1470,132 +2082,249 @@ $('buyRocketLauncherBtn').onclick = async () => {
   hide(modal('shop'));
   alert('Haz click en una celda verde para colocar el lanza cohetes');
 };
+$('buyDeflectorTowerBtn').onclick = async () => {
+  // Verificar si ya tiene el máximo
+  if (state.buildings.deflectorTowers.length >= 1) return alert('Ya tienes el máximo de torres desviadoras (1)');
+  
+  // Verificar oro
+  if (state.resources.gold < 1500) return alert(`Necesitas 1500 de oro. Tienes ${state.resources.gold}.`);
+  
+  // Verificar stock global
+  const stockSnap = await get(ref(db, 'globalShop/deflectorTower/stock'));
+  const stock = stockSnap.exists() ? stockSnap.val() : 5;
+  
+  if (stock <= 0) return alert('¡Agotado! No hay más Torres Desviadoras en stock.');
+  
+  // Usar transacción para reducir stock
+  const stockRef = ref(db, 'globalShop/deflectorTower/stock');
+  const result = await runTransaction(stockRef, (currentStock) => {
+    if (currentStock === null) return 5;
+    if (currentStock <= 0) return;
+    return currentStock - 1;
+  });
+  
+  if (!result.committed) return alert('Error al comprar. Intenta de nuevo.');
+  
+  // Deducir oro y agregar al inventario
+  state.resources.gold -= 1500;
+  await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+  
+  // Agregar a inventario
+  state.inventory.push('deflectorTower');
+  await set(ref(db, `users/${state.user}/inventory`), state.inventory);
+  
+  updateUI();
+  hide(modal('globalShop'));
+  alert('🛡️ Torre Desviadora comprada! Revisa tu inventario para colocarla.');
+};
+// Función para calcular el precio de la pala según el nivel
+function getShovelPrice(level) {
+  const basePrices = {
+    1: 50,
+    3: 150,
+    5: 400,
+    8: 1000,
+    10: 2000
+  };
+  return basePrices[level] || 50;
+}
+
+// Manejar selección de nivel de pala
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('shovel-level-btn')) {
+    const level = parseInt(e.target.dataset.level);
+    state.shovelLevel = level;
+    
+    // Actualizar estilos de botones
+    document.querySelectorAll('.shovel-level-btn').forEach(btn => {
+      btn.classList.remove('active');
+      btn.style.border = '2px solid #ccc';
+      btn.style.fontWeight = 'normal';
+      btn.style.color = '#333';
+    });
+    
+    e.target.classList.add('active');
+    e.target.style.border = '2px solid #4CAF50';
+    e.target.style.fontWeight = 'bold';
+    e.target.style.color = '#333';
+    
+    // Actualizar precio
+    const price = getShovelPrice(level);
+    $('shovelCost').textContent = `💰 ${price} Oro`;
+  }
+});
+
 $('buyShovelBtn').onclick = async () => {
-  if (state.resources.gold < 50) return alert(`Necesitas 50 de oro. Tienes ${state.resources.gold}.`);
-  state.resources.gold -= 50;
+  const price = getShovelPrice(state.shovelLevel);
+  
+  if (state.resources.gold < price) return alert(`Necesitas ${price} de oro. Tienes ${state.resources.gold}.`);
+  
+  state.resources.gold -= price;
   await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
   updateUI();
+  
   const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
-  items.push('shovel');
+  items.push(`shovel_${state.shovelLevel}`);
   await set(ref(db, `users/${state.user}/inventory/items`), items);
+  
   hide(modal('shop'));
-  alert('¡Pala comprada! Añadida a tu inventario.');
+  alert(`¡Pala x${state.shovelLevel} comprada! Añadida a tu inventario.`);
 };
 $('buyStatueBtn').onclick = async () => {
   loading(true);
   try {
-    const gold = state.resources.gold;
+    // Obtener el oro actual desde Firebase
+    const goldSnap = await get(ref(db, `users/${state.user}/resources`));
+    const gold = goldSnap.exists() ? (goldSnap.val().gold || 0) : 0;
+    
     if (gold < 500) {
       alert(`Necesitas 500 de oro. Tienes ${gold}.`);
       loading(false);
       return;
     }
    
-    const result = await runTransaction(ref(db, 'globalShop/statue'), (data) => {
-      // Si no hay data, inicializar con stock
-      if (data === null) {
-        return {stock: 10};
+    const result = await runTransaction(ref(db, 'globalShop/statue'), data => {
+      // Si no hay datos, inicializar con stock 0
+      if (!data) {
+        return {stock: 0};
       }
       
-      // Si no hay stock, abortar
-      if (data.stock <= 0) {
-        return; // abort transaction
+      // Verificar si hay stock disponible
+      const currentStock = data.stock || 0;
+      if (currentStock <= 0) {
+        // Abortar la transacción retornando undefined
+        return;
       }
       
-      // Restar 1 al stock
-      return {stock: data.stock - 1};
+      // Decrementar el stock
+      return {stock: currentStock - 1};
     });
    
-    if (!result.committed || (result.snapshot.val() && result.snapshot.val().stock < 0)) {
+    if (!result.committed) {
       alert('Lo sentimos, el artículo está agotado.');
       loading(false);
-      // Recargar stock actual
-      const stockSnap = await get(ref(db, 'globalShop/statue'));
-      const currentStock = stockSnap.val()?.stock || 0;
-      $('statueStock').textContent = currentStock;
-      $('buyStatueBtn').disabled = currentStock <= 0;
       return;
     }
    
-    // Restar oro
-    state.resources.gold -= 500;
-    await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+    // Actualizar el oro en Firebase
+    const newGold = gold - 500;
+    await set(ref(db, `users/${state.user}/resources`), {gold: newGold, lastUpdate: Date.now()});
+    state.resources.gold = newGold;
     updateUI();
    
-    // Añadir al inventario
     const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
     items.push('statue');
     await set(ref(db, `users/${state.user}/inventory/items`), items);
-   
-    // Actualizar UI
-    const newStock = result.snapshot.val().stock;
-    $('statueStock').textContent = newStock;
-    $('buyStatueBtn').disabled = newStock <= 0;
    
     hide(modal('globalShop'));
     alert('¡Compra exitosa! La estatua Moai ha sido añadida a tu inventario.');
   } catch(e) {
     alert('Error al comprar: ' + e.message);
-    console.error(e);
   }
   loading(false);
 };
-
 $('buyRocketAmmoBtn').onclick = async () => {
   loading(true);
   try {
-    const gold = state.resources.gold;
+    // Obtener el oro actual desde Firebase
+    const goldSnap = await get(ref(db, `users/${state.user}/resources`));
+    const gold = goldSnap.exists() ? (goldSnap.val().gold || 0) : 0;
+    
     if (gold < 3000) {
       alert(`Necesitas 3000 de oro. Tienes ${gold}.`);
       loading(false);
       return;
     }
    
-    const result = await runTransaction(ref(db, 'globalShop/rocketAmmo'), (data) => {
-      // Si no hay data, inicializar con stock
-      if (data === null) {
-        return {stock: 10};
+    const result = await runTransaction(ref(db, 'globalShop/rocketAmmo'), data => {
+      // Si no hay datos, inicializar con stock 0
+      if (!data) {
+        return {stock: 0};
       }
       
-      // Si no hay stock, abortar
-      if (data.stock <= 0) {
-        return; // abort transaction
+      // Verificar si hay stock disponible
+      const currentStock = data.stock || 0;
+      if (currentStock <= 0) {
+        // Abortar la transacción retornando undefined
+        return;
       }
       
-      // Restar 1 al stock
-      return {stock: data.stock - 1};
+      // Decrementar el stock
+      return {stock: currentStock - 1};
     });
    
-    if (!result.committed || (result.snapshot.val() && result.snapshot.val().stock < 0)) {
+    if (!result.committed) {
       alert('Lo sentimos, los cohetes están agotados.');
       loading(false);
-      // Recargar stock actual
-      const stockSnap = await get(ref(db, 'globalShop/rocketAmmo'));
-      const currentStock = stockSnap.val()?.stock || 0;
-      $('rocketAmmoStock').textContent = currentStock;
-      $('buyRocketAmmoBtn').disabled = currentStock <= 0;
       return;
     }
    
-    // Restar oro
-    state.resources.gold -= 3000;
-    await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+    // Actualizar el oro en Firebase
+    const newGold = gold - 3000;
+    await set(ref(db, `users/${state.user}/resources`), {gold: newGold, lastUpdate: Date.now()});
+    state.resources.gold = newGold;
     updateUI();
    
-    // Añadir munición
     const currentAmmo = (await get(ref(db, `users/${state.user}/inventory/rocketAmmo`))).val() || 0;
     await set(ref(db, `users/${state.user}/inventory/rocketAmmo`), currentAmmo + 1);
-   
-    // Actualizar UI
-    const newStock = result.snapshot.val().stock;
-    $('rocketAmmoStock').textContent = newStock;
-    $('buyRocketAmmoBtn').disabled = newStock <= 0;
    
     hide(modal('globalShop'));
     alert('¡Compra exitosa! Has comprado 1 cohete.');
   } catch(e) {
     alert('Error al comprar: ' + e.message);
-    console.error(e);
+  }
+  loading(false);
+};
+$('buyFlowerBtn').onclick = async () => {
+  loading(true);
+  try {
+    // Obtener el oro actual desde Firebase
+    const goldSnap = await get(ref(db, `users/${state.user}/resources`));
+    const gold = goldSnap.exists() ? (goldSnap.val().gold || 0) : 0;
+    
+    if (gold < 200) {
+      alert(`Necesitas 200 de oro. Tienes ${gold}.`);
+      loading(false);
+      return;
+    }
+   
+    const result = await runTransaction(ref(db, 'globalShop/flower'), data => {
+      // Si no hay datos, inicializar con stock 0
+      if (!data) {
+        return {stock: 0};
+      }
+      
+      // Verificar si hay stock disponible
+      const currentStock = data.stock || 0;
+      if (currentStock <= 0) {
+        // Abortar la transacción retornando undefined
+        return;
+      }
+      
+      // Decrementar el stock
+      return {stock: currentStock - 1};
+    });
+   
+    if (!result.committed) {
+      alert('Lo sentimos, las flores están agotadas.');
+      loading(false);
+      return;
+    }
+   
+    // Actualizar el oro en Firebase
+    const newGold = gold - 200;
+    await set(ref(db, `users/${state.user}/resources`), {gold: newGold, lastUpdate: Date.now()});
+    state.resources.gold = newGold;
+    updateUI();
+   
+    const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
+    items.push('flower');
+    await set(ref(db, `users/${state.user}/inventory/items`), items);
+   
+    hide(modal('globalShop'));
+    alert('¡Compra exitosa! La flor decorativa ha sido añadida a tu inventario.');
+  } catch(e) {
+    alert('Error al comprar: ' + e.message);
   }
   loading(false);
 };
@@ -1660,12 +2389,31 @@ document.querySelectorAll('.attack-option').forEach(btn => {
      
       await set(ref(db, `users/${state.user}/resources`), {gold, lastUpdate: Date.now()});
       await set(ref(db, `users/${state.currentVillage.owner}/resources`), {gold: vGold, lastUpdate: Date.now()});
-      await addXP(20);
+      
+      // Dar XP al atacante (state.user), no al dueño de la aldea
+      const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+      if (attackerLevelSnap.exists()) {
+        let attackerLevel = attackerLevelSnap.val();
+        attackerLevel.xp = (attackerLevel.xp || 0) + 20;
+        
+        // Verificar si sube de nivel
+        while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+          attackerLevel.xp -= attackerLevel.needed;
+          attackerLevel.level++;
+          attackerLevel.needed = attackerLevel.level * 100;
+        }
+        
+        if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+        
+        await set(ref(db, `users/${state.user}/level`), attackerLevel);
+      }
      
       state.resources.gold = vGold;
       updateUI();
      
-      alert(`¡Ataque exitoso! Robaste ${steal} oro. +20 XP`);
+      // Mostrar notificación de XP y oro robado
+      showXPNotification(20, window.innerWidth / 2 - 50, window.innerHeight / 2, `+20 XP | +${steal} 💰`);
+      
       await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
       loading(false);
     } else {
@@ -1799,9 +2547,19 @@ $('inventoryButton').onclick = async () => {
       </div>
     ` : '') + 
     state.inventory.map((item, i) => {
-      const info = item === 'statue' ?
-        {name: '🗿 Estatua Moai', desc: 'Estatua decorativa única'} :
-        {name: '🛠️ Pala', desc: 'Repara áreas dañadas'};
+      let info;
+      if (item === 'statue') {
+        info = {name: '🗿 Estatua Moai', desc: 'Estatua decorativa única'};
+      } else if (item === 'flower') {
+        info = {name: '🌸 Flor Decorativa', desc: 'Hermosa flor para decorar tu aldea'};
+      } else if (item === 'deflectorTower') {
+        info = {name: '🛡️ Torre Desviadora', desc: 'Desvía cohetes enemigos al mar'};
+      } else if (item.startsWith('shovel_')) {
+        const level = item.split('_')[1];
+        info = {name: `🛠️ Pala x${level}`, desc: `Repara hasta ${level} área(s) dañada(s)`};
+      } else {
+        info = {name: '🛠️ Pala', desc: 'Repara áreas dañadas'};
+      }
       return `
         <div class="shop-item">
           <div class="shop-item-info">
@@ -1816,7 +2574,24 @@ $('inventoryButton').onclick = async () => {
 window.useItem = i => {
   state.placing = state.inventory[i];
   hide(modal('inventory'));
-  alert(`Haz click en una celda ${state.placing === 'statue' ? 'verde' : 'dañada'} para ${state.placing === 'statue' ? 'colocar la estatua' : 'reparar'}`);
+  
+  const isShovel = state.placing.startsWith('shovel');
+  const isStatue = state.placing === 'statue';
+  const isFlower = state.placing === 'flower';
+  const isDeflectorTower = state.placing === 'deflectorTower';
+  const shovelLevel = isShovel ? state.placing.split('_')[1] : '1';
+  
+  if (isStatue) {
+    alert('Haz click en una celda verde para colocar la estatua');
+  } else if (isFlower) {
+    alert('Haz click en una celda verde para colocar la flor');
+  } else if (isDeflectorTower) {
+    alert('Haz click en una celda verde para colocar la Torre Desviadora (protege contra cohetes en rango de 3 celdas)');
+  } else if (isShovel) {
+    alert(`Haz click en una celda dañada para reparar (Pala x${shovelLevel})`);
+  } else {
+    alert('Haz click en una celda dañada para reparar');
+  }
 };
 // Login/Register
 $('loginTab').onclick = () => {
@@ -1868,7 +2643,7 @@ $('loginBtn').onclick = async () => {
   }
  
   const achSnap = await get(ref(db, `users/${user}/achievements`));
-  state.achievements = achSnap.exists() ? snap.val() : {};
+  state.achievements = achSnap.exists() ? achSnap.val() : {};
  
   if (!localStorage.getItem('tutorialCompleted')) {
     setTimeout(() => show(modal('tutorial')), 500);
@@ -2043,17 +2818,15 @@ $('attackButton').onclick = async () => {
 };
 $('globalShopButton').onclick = async () => {
   if (!state.user) return alert('Debes iniciar sesión para acceder a la tienda global');
-  
+ 
   loading(true);
   
-  // Cargar recursos del usuario si no están cargados
-  if (state.resources.gold === 0 || state.resources.gold === undefined) {
-    const resourceSnap = await get(ref(db, `users/${state.user}/resources`));
-    if (resourceSnap.exists()) {
-      state.resources.gold = resourceSnap.val().gold || 0;
-    }
+  // Cargar el oro actual del usuario desde Firebase
+  const goldSnap = await get(ref(db, `users/${state.user}/resources`));
+  if (goldSnap.exists()) {
+    state.resources.gold = goldSnap.val().gold || 0;
   }
- 
+  
   // Inicializar stock si no existe
   let statueSnap = await get(ref(db, 'globalShop/statue'));
   if (!statueSnap.exists()) {
@@ -2066,19 +2839,37 @@ $('globalShopButton').onclick = async () => {
     await set(ref(db, 'globalShop/rocketAmmo'), {stock: 10});
     rocketAmmoSnap = await get(ref(db, 'globalShop/rocketAmmo'));
   }
+  
+  let flowerSnap = await get(ref(db, 'globalShop/flower'));
+  if (!flowerSnap.exists()) {
+    await set(ref(db, 'globalShop/flower'), {stock: 15});
+    flowerSnap = await get(ref(db, 'globalShop/flower'));
+  }
+  
+  let deflectorTowerSnap = await get(ref(db, 'globalShop/deflectorTower'));
+  if (!deflectorTowerSnap.exists()) {
+    await set(ref(db, 'globalShop/deflectorTower'), {stock: 5});
+    deflectorTowerSnap = await get(ref(db, 'globalShop/deflectorTower'));
+  }
  
-  const statueStock = statueSnap.val()?.stock || 0;
-  const rocketAmmoStock = rocketAmmoSnap.val()?.stock || 0;
+  const statueStock = statueSnap.val().stock || 0;
+  const rocketAmmoStock = rocketAmmoSnap.val().stock || 0;
+  const flowerStock = flowerSnap.val().stock || 0;
+  const deflectorTowerStock = deflectorTowerSnap.val().stock || 0;
   
   loading(false);
   show(modal('globalShop'));
  
   $('statueStock').textContent = statueStock;
   $('rocketAmmoStock').textContent = rocketAmmoStock;
+  $('deflectorTowerStock').textContent = deflectorTowerStock;
+  $('flowerStock').textContent = flowerStock;
   $('buyStatueBtn').disabled = statueStock <= 0;
   $('buyStatueBtn').textContent = statueStock <= 0 ? 'Agotado' : 'Comprar';
   $('buyRocketAmmoBtn').disabled = rocketAmmoStock <= 0;
   $('buyRocketAmmoBtn').textContent = rocketAmmoStock <= 0 ? 'Agotado' : 'Comprar';
+  $('buyFlowerBtn').disabled = flowerStock <= 0;
+  $('buyFlowerBtn').textContent = flowerStock <= 0 ? 'Agotado' : 'Comprar';
 };
 // Drag & Zoom
 function setupDrag(viewport, world, view) {
@@ -2148,7 +2939,7 @@ function init() {
   setupListeners();
   setupDrag($('mainViewport'), $('mainWorld'), state.view.main);
   setupDrag($('islandViewport'), $('islandWorld'), state.view.island);
- 
+
   const saved = localStorage.getItem('currentUser');
   if (saved) {
     state.user = saved;
@@ -2167,8 +2958,11 @@ function init() {
     if (!localStorage.getItem('tutorialCompleted')) {
       setTimeout(() => show(modal('tutorial')), 500);
     }
+  } else {
+    // Si no hay usuario guardado, mostrar el modal de login
+    show(modal('login'));
   }
- 
+
   state.view.main.x = ($('mainViewport').clientWidth - $('mainGrid').offsetWidth) / 2;
   state.view.main.y = ($('mainViewport').clientHeight - $('mainGrid').offsetHeight) / 2;
   updateTransform('main');
