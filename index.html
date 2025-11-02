@@ -106,6 +106,18 @@ body.night-mode .grid { background-color: #1a1a2e; }
   transition: background-color 0.5s ease;
 }
 body.night-mode .grass { background-color: #2d5016; }
+
+/* Texturas de pasto */
+body.texture-mode .grass {
+  background-image: url('recursos/pasto.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+body.texture-mode.night-mode .grass {
+  background-image: url('recursos/pasto.png');
+  filter: brightness(0.6);
+}
 .road {
   background-color: #A1887F;
   transition: background-color 0.5s ease;
@@ -201,6 +213,42 @@ body.night-mode .damaged { background-color: #5d2e0b; }
   background-color: #8B4513;
 }
 body.night-mode .center { background-color: #5d2e0b; }
+
+/* Colores de fondo para castillos en mapa principal */
+.map-view .my-castle {
+  background-color: #4169E1;
+}
+.map-view .enemy-castle {
+  background-color: #DC143C;
+}
+body.night-mode .map-view .my-castle {
+  background-color: #1E3A8A;
+}
+body.night-mode .map-view .enemy-castle {
+  background-color: #7F1D1D;
+}
+
+/* Texturas de castillos - SOLO en modo texturas */
+body.texture-mode .my-castle {
+  background-image: url('recursos/castilloblue.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-size: 0;
+  color: transparent;
+}
+body.texture-mode .enemy-castle {
+  background-image: url('recursos/castillored.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  font-size: 0;
+  color: transparent;
+}
+body.texture-mode.night-mode .my-castle,
+body.texture-mode.night-mode .enemy-castle {
+  filter: brightness(0.6);
+}
 .particula {
   position: absolute;
   width: 8px;
@@ -290,11 +338,27 @@ body.night-mode .center { background-color: #5d2e0b; }
 #dayNightToggle { top: 120px; right: 20px; font-size: 24px; }
 #backButton { bottom: 20px; left: 20px; font-size: 16px; }
 #islandGridToggle { bottom: 70px; left: 20px; opacity: 0; pointer-events: none; }
+#islandTextureToggle { 
+  bottom: 200px; 
+  right: 20px; 
+  opacity: 0; 
+  pointer-events: none;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 18px;
+  padding: 15px 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+}
+#islandTextureToggle:hover {
+  transform: scale(1.05);
+}
 #islandAchievementsButton { bottom: 140px; right: 20px; opacity: 0; pointer-events: none; }
-#shopButton, #inventoryButton, #attackButton, #achievementsButton { bottom: 20px; right: 20px; display: none; }
+#shopButton, #inventoryButton, #marketButton, #attackButton, #achievementsButton { bottom: 20px; right: 20px; display: none; }
 #inventoryButton { bottom: 80px; }
-#achievementsButton { bottom: 140px; }
-#attackButton { bottom: 200px; }
+#marketButton { bottom: 260px; }
+#achievementsButton { bottom: 320px; }
+#attackButton { bottom: 380px; }
 #globalShopButton { bottom: 80px; right: 20px; }
 #topPlayersButton { bottom: 20px; right: 20px; }
 .panel {
@@ -699,6 +763,7 @@ body.night-mode .center { background-color: #5d2e0b; }
 <div class="island-view">
   <button class="btn" id="backButton">← Volver al Mapa</button>
   <button class="btn" id="islandGridToggle">Quitar Cuadrícula</button>
+  <button class="btn" id="islandTextureToggle">🎨 Texturas</button>
   <button class="btn gold primary" id="islandAchievementsButton">🏆 Logros</button>
   <div id="islandTitle">Aldea de <span id="ownerName"></span></div>
   <div class="panel" id="userInfoPanel">
@@ -714,6 +779,7 @@ body.night-mode .center { background-color: #5d2e0b; }
   </div>
   <button class="btn primary" id="shopButton">🛒 Tienda</button>
   <button class="btn primary" id="inventoryButton">🎒 Inventario</button>
+  <button class="btn success primary" id="marketButton">🎪 Mercado</button>
   <button class="btn danger primary" id="attackButton">⚔️ Atacar</button>
   <div class="viewport" id="islandViewport">
     <div class="world" id="islandWorld">
@@ -777,6 +843,45 @@ body.night-mode .center { background-color: #5d2e0b; }
     <h2>🎒 Inventario</h2>
     <div id="inventoryItems"></div>
     <button class="modal-close" id="closeInventory">Cerrar</button>
+  </div>
+</div>
+<div class="modal" id="marketModal">
+  <div class="modal-content fullscreen">
+    <button class="modal-close-top-left" id="closeMarket">✕</button>
+    <h2>🎪 Mercado de Jugadores</h2>
+    <div style="text-align: center; margin-bottom: 20px; color: #666;">
+      💰 Tu Oro: <span id="marketGold" style="color: #FFD700; font-weight: bold;">0</span>
+    </div>
+    <div class="shop-tabs">
+      <button class="shop-tab active" data-tab="market-buy">🛒 Comprar</button>
+      <button class="shop-tab" data-tab="market-sell">💰 Vender</button>
+      <button class="shop-tab" data-tab="market-my">📦 Mis Ofertas</button>
+    </div>
+    
+    <!-- COMPRAR -->
+    <div class="shop-category active" id="market-buy">
+      <div style="margin-bottom: 15px;">
+        <input type="text" id="marketSearchBuy" placeholder="🔍 Buscar objetos..." style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px;">
+      </div>
+      <div id="marketBuyList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; max-height: 500px; overflow-y: auto;">
+        <!-- Ofertas de compra se cargarán aquí -->
+      </div>
+    </div>
+    
+    <!-- VENDER -->
+    <div class="shop-category" id="market-sell">
+      <h3 style="margin-bottom: 15px; color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Selecciona un objeto de tu inventario para vender:</h3>
+      <div id="marketSellInventory" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; max-height: 400px; overflow-y: auto;">
+        <!-- Inventario para vender se cargará aquí -->
+      </div>
+    </div>
+    
+    <!-- MIS OFERTAS -->
+    <div class="shop-category" id="market-my">
+      <div id="marketMyOffers" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; max-height: 500px; overflow-y: auto;">
+        <!-- Mis ofertas se cargarán aquí -->
+      </div>
+    </div>
   </div>
 </div>
 <div class="modal" id="globalShopModal">
@@ -958,6 +1063,12 @@ body.night-mode .center { background-color: #5d2e0b; }
 <audio id="shopMusic" loop>
   <source src="recursos/Untitled.mp3" type="audio/mpeg">
 </audio>
+<audio id="rocketSound">
+  <source src="recursos/Rocket launchersoundeffect.mp3" type="audio/mpeg">
+</audio>
+<audio id="explosionSound">
+  <source src="recursos/explosión.mp3" type="audio/mpeg">
+</audio>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
@@ -986,6 +1097,7 @@ const state = {
   achievements: {},
   tutorial: { step: 1 },
   nightMode: false,
+  textureMode: false,
   grids: { main: true, island: true },
   view: { main: { x: 0, y: 0, scale: 1 }, island: { x: 0, y: 0, scale: 1 } },
   drag: { active: false, moved: false, startX: 0, startY: 0 },
@@ -1000,7 +1112,8 @@ const state = {
   spectateListener: null, // Listener de Firebase para espectador
   spectateAttackListener: null, // Listener de ataques para espectador
   bomberActive: false, // Indica si hay un bombardero activo
-  dragLocked: false // Bloquear movimiento del mapa durante ataques
+  dragLocked: false, // Bloquear movimiento del mapa durante ataques
+  moving: null // Info de estructura que se está moviendo
 };
 const ACHIEVEMENTS = {
   firstVillage: { id: 'firstVillage', name: 'Primer Constructor', desc: 'Construye tu primera aldea', icon: '🏰', reward: '+50 XP' },
@@ -1046,10 +1159,51 @@ function initMap() {
     }
   }
 }
+// Función para detectar y eliminar aldeas duplicadas
+async function removeDuplicateVillages() {
+  const villagesSnap = await get(ref(db, 'villages'));
+  if (!villagesSnap.exists()) return;
+  
+  const villages = villagesSnap.val();
+  const ownerMap = {}; // Mapa de dueño -> [aldeas]
+  
+  // Agrupar aldeas por dueño
+  Object.entries(villages).forEach(([key, village]) => {
+    if (!ownerMap[village.owner]) {
+      ownerMap[village.owner] = [];
+    }
+    ownerMap[village.owner].push({ id: key, ...village });
+  });
+  
+  // Eliminar duplicados (dejar solo la primera aldea de cada jugador)
+  for (const [owner, villageList] of Object.entries(ownerMap)) {
+    if (villageList.length > 1) {
+      console.log(`⚠️ Jugador ${owner} tiene ${villageList.length} aldeas. Eliminando duplicados...`);
+      
+      // Ordenar por ID (la primera creada tiene el ID más antiguo)
+      villageList.sort((a, b) => a.id.localeCompare(b.id));
+      
+      // Eliminar todas excepto la primera
+      for (let i = 1; i < villageList.length; i++) {
+        const duplicateId = villageList[i].id;
+        console.log(`🗑️ Eliminando aldea duplicada: ${duplicateId} de ${owner}`);
+        await set(ref(db, `villages/${duplicateId}`), null);
+        
+        // También eliminar los datos del usuario asociados a esta aldea duplicada
+        // (mantener solo los datos de la primera aldea)
+      }
+    }
+  }
+}
+
 // Firebase Listeners
 function setupListeners() {
   onValue(ref(db, 'villages'), snap => {
     if (!snap.exists()) return;
+    
+    // Verificar duplicados cada vez que se cargan las aldeas
+    removeDuplicateVillages();
+    
     Object.entries(snap.val()).forEach(([key, v]) => {
       const cell = state.cells[`${v.row}-${v.col}`];
       if (!cell) return;
@@ -1057,6 +1211,13 @@ function setupListeners() {
       state.map[v.row][v.col] = { ...state.map[v.row][v.col], building: 'house', owner: v.owner };
       cell.classList.add('building');
       cell.textContent = '🏰';
+      
+      // Agregar clase según si es mi aldea o no
+      if (v.owner === state.user) {
+        cell.classList.add('my-castle');
+      } else {
+        cell.classList.add('enemy-castle');
+      }
      
       const label = document.createElement('div');
       label.className = 'owner-name';
@@ -1204,6 +1365,7 @@ async function openIsland(owner) {
  
   $('shopButton').style.display = owner === state.user ? 'block' : 'none';
   $('inventoryButton').style.display = owner === state.user ? 'block' : 'none';
+  $('marketButton').style.display = owner === state.user ? 'block' : 'none';
   $('attackButton').style.display = owner !== state.user && state.user ? 'block' : 'none';
 }
 async function startSpectating(village) {
@@ -1223,6 +1385,7 @@ async function startSpectating(village) {
   // Ocultar botones de acción
   $('shopButton').style.display = 'none';
   $('inventoryButton').style.display = 'none';
+  $('marketButton').style.display = 'none';
   $('attackButton').style.display = 'none';
   $('backButton').textContent = '← Salir de Espectador';
   
@@ -1451,6 +1614,12 @@ function renderIsland() {
         cell.classList.add('center');
         cell.classList.remove('grass');
         cell.textContent = '🏰';
+        // Agregar clase según si es mi aldea o no
+        if (state.currentVillage.owner === state.user) {
+          cell.classList.add('my-castle');
+        } else {
+          cell.classList.add('enemy-castle');
+        }
       }
      
       grid.appendChild(cell);
@@ -1484,7 +1653,12 @@ function renderIsland() {
     });
     state.buildings.damaged.forEach(d => {
       const c = grid.querySelector(`[data-row="${d.row}"][data-col="${d.col}"]`);
-      if (c) c.classList.add('damaged');
+      // Solo agregar 'damaged' si la celda no tiene ninguna estructura
+      if (c && !c.classList.contains('gold-mine') && !c.classList.contains('rocket-launcher') && 
+          !c.classList.contains('aa-turret') && !c.classList.contains('deflector-tower') && 
+          !c.classList.contains('statue') && !c.classList.contains('flower')) {
+        c.classList.add('damaged');
+      }
     });
   }, 100);
 }
@@ -1493,16 +1667,47 @@ async function handleIslandClick(cell) {
   const r = +cell.dataset.row, c = +cell.dataset.col;
  
   if (r === 10 && c === 10) return alert('No puedes interactuar con el castillo');
+  
+  const own = state.currentVillage.owner === state.user;
+  
+  // Si hay una estructura y es mi aldea, preguntar si quiere moverla
+  if (own && !state.placing && (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower'))) {
+    const move = confirm('¿Quieres mover esta estructura a otra ubicación?');
+    if (move) {
+      // Determinar tipo de estructura
+      let structureType = null;
+      if (cell.classList.contains('gold-mine')) structureType = 'mine';
+      else if (cell.classList.contains('rocket-launcher')) structureType = 'rocketLauncher';
+      else if (cell.classList.contains('aa-turret')) structureType = 'aaTurret';
+      else if (cell.classList.contains('statue')) structureType = 'statue';
+      else if (cell.classList.contains('flower')) structureType = 'flower';
+      else if (cell.classList.contains('deflector-tower')) structureType = 'deflectorTower';
+      
+      // Guardar info de la estructura a mover
+      state.moving = { type: structureType, fromRow: r, fromCol: c };
+      alert('Ahora haz click en la nueva ubicación para mover la estructura');
+    }
+    return;
+  }
+  
   if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower')) {
     return alert('Ya hay una estructura aquí');
+  }
+  
+  // Si está en modo mover, completar el movimiento
+  if (own && state.moving) {
+    if (cell.classList.contains('damaged')) {
+      return alert('No puedes mover una estructura a un área dañada.');
+    }
+    await moveStructure(state.moving.fromRow, state.moving.fromCol, r, c, state.moving.type);
+    state.moving = null;
+    return;
   }
   
   // BUGFIX: No permitir colocar estructuras en bloques destruidos
   if (cell.classList.contains('damaged') && (state.placing === 'mine' || state.placing === 'rocketLauncher' || state.placing === 'aaTurret' || state.placing === 'statue' || state.placing === 'flower' || state.placing === 'deflectorTower')) {
     return alert('No puedes construir en un área dañada. Repárala primero con una pala.');
   }
- 
-  const own = state.currentVillage.owner === state.user;
  
   if (own && state.placing === 'mine') await buildMine(r, c, cell);
   else if (own && state.placing === 'rocketLauncher') await buildRocketLauncher(r, c, cell);
@@ -1661,6 +1866,67 @@ async function placeFlower(r, c, cell) {
   alert('¡Flor decorativa colocada! +30 XP');
   loading(false);
 }
+async function moveStructure(fromRow, fromCol, toRow, toCol, type) {
+  loading(true);
+  
+  const grid = $('islandGrid');
+  const oldCell = grid.querySelector(`[data-row="${fromRow}"][data-col="${fromCol}"]`);
+  const newCell = grid.querySelector(`[data-row="${toRow}"][data-col="${toCol}"]`);
+  
+  // Determinar el array y clase correspondiente
+  let buildingArray, className, emoji;
+  if (type === 'mine') {
+    buildingArray = state.buildings.mines;
+    className = 'gold-mine';
+    emoji = '⛏️';
+  } else if (type === 'rocketLauncher') {
+    buildingArray = state.buildings.rocketLaunchers;
+    className = 'rocket-launcher';
+    emoji = '🚀';
+  } else if (type === 'aaTurret') {
+    buildingArray = state.buildings.aaTurrets;
+    className = 'aa-turret';
+    emoji = '🎯';
+  } else if (type === 'deflectorTower') {
+    buildingArray = state.buildings.deflectorTowers;
+    className = 'deflector-tower';
+    emoji = '🛡️';
+  } else if (type === 'statue') {
+    buildingArray = state.buildings.statues;
+    className = 'statue';
+    emoji = '🗿';
+  } else if (type === 'flower') {
+    buildingArray = state.buildings.flowers;
+    className = 'flower';
+    emoji = '🌸';
+  }
+  
+  // Encontrar y actualizar la estructura en el array
+  const structureIndex = buildingArray.findIndex(s => s.row === fromRow && s.col === fromCol);
+  if (structureIndex !== -1) {
+    buildingArray[structureIndex] = { row: toRow, col: toCol };
+  }
+  
+  // Actualizar en Firebase
+  await set(ref(db, `users/${state.user}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
+    deflectorTowers: state.buildings.deflectorTowers,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  
+  // Actualizar visualmente
+  oldCell.classList.remove(className);
+  oldCell.textContent = '';
+  newCell.classList.add(className);
+  newCell.textContent = emoji;
+  
+  alert('¡Estructura movida exitosamente!');
+  loading(false);
+}
 async function repair(r, c, cell, shovelLevel = 1) {
   loading(true);
   
@@ -1754,6 +2020,48 @@ async function launchBomb(r, c) {
     timestamp: Date.now()
   });
   
+  // Obtener la celda objetivo
+  const targetCell = $('islandGrid').querySelector(`[data-row="${r}"][data-col="${c}"]`);
+  if (!targetCell) {
+    state.dragLocked = false;
+    $('islandViewport').style.cursor = 'grab';
+    loading(false);
+    return;
+  }
+  
+  const targetRect = targetCell.getBoundingClientRect();
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const targetCenterY = targetRect.top + targetRect.height / 2;
+  
+  // Crear bomba cayendo desde arriba
+  const bomb = document.createElement('div');
+  bomb.style.position = 'fixed';
+  bomb.style.fontSize = '30px';
+  bomb.style.left = targetCenterX - 15 + 'px';
+  bomb.style.top = '-50px';
+  bomb.style.zIndex = '10001';
+  bomb.textContent = '💣';
+  bomb.style.transition = 'top 0.8s ease-in';
+  document.body.appendChild(bomb);
+  
+  // Animar caída
+  setTimeout(() => {
+    bomb.style.top = targetCenterY - 15 + 'px';
+  }, 50);
+  
+  // Esperar a que caiga y explotar
+  await new Promise(resolve => setTimeout(resolve, 850));
+  
+  bomb.remove();
+  
+  // Crear explosión visual y sonora
+  createExplosion(targetCenterX, targetCenterY);
+  
+  // Efecto de temblor
+  const viewport = $('islandViewport');
+  viewport.classList.add('shake');
+  setTimeout(() => viewport.classList.remove('shake'), 300);
+  
   // Pequeño delay para que los espectadores vean la animación
   await new Promise(resolve => setTimeout(resolve, 100));
   
@@ -1761,11 +2069,21 @@ async function launchBomb(r, c) {
     for (let dy = -1; dy <= 1; dy++) {
       const nr = r + dx, nc = c + dy;
       if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
-        const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
-        if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-            !target.classList.contains('aa-turret') && !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
-          state.buildings.damaged.push({row: nr, col: nc});
-          target.classList.add('damaged');
+        // Verificar si hay alguna estructura en esta posición
+        const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
+        const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
+        const hasAATurret = state.buildings.aaTurrets.some(aa => aa.row === nr && aa.col === nc);
+        const hasDeflector = state.buildings.deflectorTowers.some(dt => dt.row === nr && dt.col === nc);
+        const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
+        const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
+        const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
+        
+        if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
+          const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+          if (target) {
+            state.buildings.damaged.push({row: nr, col: nc});
+            target.classList.add('damaged');
+          }
         }
       }
     }
@@ -1886,13 +2204,15 @@ async function launchRocketAttack(r, c) {
     alert('¡Necesitas construir un lanza cohetes en tu aldea primero!');
     state.attacking = false;
     state.placing = null;
+    state.dragLocked = false;
+    $('islandViewport').style.cursor = 'grab';
     await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
-    loading(false);
     return;
   }
  
   const myRocketLauncher = myRocketLaunchers[0];
  
+
   // Paso 1: Transición a mi aldea
   recordAction('transition_attacker', { attacker: state.user }, 0);
   
@@ -1902,11 +2222,14 @@ async function launchRocketAttack(r, c) {
   state.skipCentering = true;
   await openIsland(state.user);
 
-  // OCULTAR BOTONES DE UI DURANTE LA ANIMACIÓN (excepto logros)
+  // OCULTAR BOTONES DE UI DURANTE LA ANIMACIÓN
   $('backButton').style.display = 'none';
   $('inventoryButton').style.display = 'none';
   $('shopButton').style.display = 'none';
-  // El botón de logros se mantiene visible
+  $('marketButton').style.display = 'none';
+  $('islandAchievementsButton').style.display = 'none';
+  $('islandTextureToggle').style.display = 'none';
+  $('islandGridToggle').style.display = 'none';
 
   // Centrar en el lanza cohetes sin animación
   const rocketLauncherCell = $('islandGrid').querySelector(`[data-row="${myRocketLauncher.row}"][data-col="${myRocketLauncher.col}"]`);
@@ -1916,7 +2239,11 @@ async function launchRocketAttack(r, c) {
     $('backButton').style.display = 'block';
     $('inventoryButton').style.display = state.user === state.currentVillage.owner ? 'block' : 'none';
     $('shopButton').style.display = state.user === state.currentVillage.owner ? 'block' : 'none';
+    $('marketButton').style.display = state.user === state.currentVillage.owner ? 'block' : 'none';
     $('attackButton').style.display = state.user !== state.currentVillage.owner ? 'block' : 'none';
+    $('islandAchievementsButton').style.display = 'block';
+    $('islandTextureToggle').style.display = 'block';
+    $('islandGridToggle').style.display = 'block';
     loading(false);
     return;
   }
@@ -1952,6 +2279,12 @@ async function launchRocketAttack(r, c) {
   const updatedRocketLauncherCell = $('islandGrid').querySelector(`[data-row="${myRocketLauncher.row}"][data-col="${myRocketLauncher.col}"]`);
   const updatedRect = updatedRocketLauncherCell.getBoundingClientRect();
  
+  // Reproducir sonido de lanzamiento
+  const rocketSound = $('rocketSound');
+  rocketSound.currentTime = 0;
+  rocketSound.volume = 0.5;
+  rocketSound.play().catch(e => console.log('Error reproduciendo sonido:', e));
+  
   const rocket = document.createElement('div');
   rocket.style.position = 'fixed';
   rocket.style.fontSize = '40px';
@@ -2059,8 +2392,11 @@ async function launchRocketAttack(r, c) {
   state.view.island.scale = savedZoom.scale;
   updateTransform('island');
 
-  // Forzar que el botón de regresar aparezca inmediatamente
+  // Forzar que los botones aparezcan inmediatamente
   $('backButton').style.display = 'block';
+  $('islandAchievementsButton').style.display = 'block';
+  $('islandTextureToggle').style.display = 'block';
+  $('islandGridToggle').style.display = 'block';
 
   setTimeout(() => $('fade').style.opacity = 0, 100);
  
@@ -2082,6 +2418,9 @@ async function launchRocketAttack(r, c) {
     $('inventoryButton').style.display = 'none';
     $('shopButton').style.display = 'none';
     $('attackButton').style.display = 'block';
+    $('islandAchievementsButton').style.display = 'block';
+    $('islandTextureToggle').style.display = 'block';
+    $('islandGridToggle').style.display = 'block';
     loading(false);
     return;
   }
@@ -2197,6 +2536,12 @@ async function launchRocketAttack(r, c) {
       // EXPLOSIÓN EN EL MAR (EN EL BORDE DEL MAPA)
       fallingRocket.remove();
       
+      // Reproducir sonido de explosión
+      const explosionSound = $('explosionSound');
+      explosionSound.currentTime = 0;
+      explosionSound.volume = 0.4;
+      explosionSound.play().catch(e => console.log('Error reproduciendo sonido:', e));
+      
       // Efecto de temblor
       const viewport = $('islandViewport');
       viewport.classList.add('shake');
@@ -2223,6 +2568,27 @@ async function launchRocketAttack(r, c) {
       waterSplash.textContent = '💦';
       waterSplash.style.animation = 'splashAnimation 1s ease-out';
       document.body.appendChild(waterSplash);
+      
+      // Crear partículas de fuego (explosión)
+      const colors = ['#ff4500', '#ff6347', '#ff8c00', '#ffa500', '#ffff00', '#ff0000'];
+      for (let i = 0; i < 20; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'explosion-particle';
+        particle.style.left = seaX + 'px';
+        particle.style.top = seaY + 'px';
+        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+        
+        const angle = (Math.PI * 2 * i) / 20;
+        const velocity = 80 + Math.random() * 100;
+        const tx = Math.cos(angle) * velocity;
+        const ty = Math.sin(angle) * velocity;
+        
+        particle.style.animation = `explode 1s ease-out forwards`;
+        particle.style.transform = `translate(${tx}px, ${ty}px) scale(${Math.random() * 1.5 + 0.5})`;
+        
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 1000);
+      }
       
       // Crear partículas de agua
       for (let i = 0; i < 15; i++) {
@@ -2287,6 +2653,9 @@ async function launchRocketAttack(r, c) {
       $('inventoryButton').style.display = 'none';
       $('shopButton').style.display = 'none';
       $('attackButton').style.display = 'block';
+      $('islandAchievementsButton').style.display = 'block';
+      $('islandTextureToggle').style.display = 'block';
+      $('islandGridToggle').style.display = 'block';
       
       // RESTAURAR INTERACCIÓN
       islandViewport.style.pointerEvents = 'auto';
@@ -2336,18 +2705,27 @@ async function launchRocketAttack(r, c) {
       }
       
       // Aplicar daño REDUCIDO (3x3 en lugar de 7x7)
-      loading(true);
       let damagedCells = 0;
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           const nr = clampedRow + dx, nc = clampedCol + dy;
           if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
-            const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
-            if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-                !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
-              state.buildings.damaged.push({row: nr, col: nc});
-              target.classList.add('damaged');
-              damagedCells++;
+            // Verificar si hay alguna estructura en esta posición
+            const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
+            const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
+            const hasAATurret = state.buildings.aaTurrets.some(aa => aa.row === nr && aa.col === nc);
+            const hasDeflector = state.buildings.deflectorTowers.some(dt => dt.row === nr && dt.col === nc);
+            const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
+            const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
+            const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
+            
+            if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
+              const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+              if (target) {
+                state.buildings.damaged.push({row: nr, col: nc});
+                target.classList.add('damaged');
+                damagedCells++;
+              }
             }
           }
         }
@@ -2356,6 +2734,7 @@ async function launchRocketAttack(r, c) {
       await set(ref(db, `users/${attackTarget.owner}/buildings`), {
         goldMines: state.buildings.mines,
         rocketLaunchers: state.buildings.rocketLaunchers,
+        aaTurrets: state.buildings.aaTurrets,
         deflectorTowers: state.buildings.deflectorTowers,
         statues: state.buildings.statues,
         flowers: state.buildings.flowers,
@@ -2384,6 +2763,9 @@ async function launchRocketAttack(r, c) {
       $('inventoryButton').style.display = 'none';
       $('shopButton').style.display = 'none';
       $('attackButton').style.display = 'block';
+      $('islandAchievementsButton').style.display = 'block';
+      $('islandTextureToggle').style.display = 'block';
+      $('islandGridToggle').style.display = 'block';
       
       // RESTAURAR INTERACCIÓN
       islandViewport.style.pointerEvents = 'auto';
@@ -2430,16 +2812,25 @@ async function launchRocketAttack(r, c) {
   createExplosion(explosionX, explosionY);
  
   // Aplicar daño (7x7)
-  loading(true);
   for (let dx = -3; dx <= 3; dx++) {
     for (let dy = -3; dy <= 3; dy++) {
       const nr = attackTarget.row + dx, nc = attackTarget.col + dy;
       if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
-        const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
-        if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-            !target.classList.contains('aa-turret') && !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
-          state.buildings.damaged.push({row: nr, col: nc});
-          target.classList.add('damaged');
+        // Verificar si hay alguna estructura en esta posición
+        const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
+        const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
+        const hasAATurret = state.buildings.aaTurrets.some(aa => aa.row === nr && aa.col === nc);
+        const hasDeflector = state.buildings.deflectorTowers.some(dt => dt.row === nr && dt.col === nc);
+        const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
+        const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
+        const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
+        
+        if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
+          const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+          if (target) {
+            state.buildings.damaged.push({row: nr, col: nc});
+            target.classList.add('damaged');
+          }
         }
       }
     }
@@ -2479,6 +2870,9 @@ async function launchRocketAttack(r, c) {
   $('inventoryButton').style.display = 'none';
   $('shopButton').style.display = 'none';
   $('attackButton').style.display = 'block';
+  $('islandAchievementsButton').style.display = 'block';
+  $('islandTextureToggle').style.display = 'block';
+  $('islandGridToggle').style.display = 'block';
   
   state.attacking = false;
   state.placing = null;
@@ -2789,13 +3183,22 @@ async function launchBomberAttack(r, c) {
             if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
               const cellKey = `${nr}-${nc}`;
               if (!damagedCells.includes(cellKey)) {
-                const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
-                if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-                    !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && 
-                    !target.classList.contains('flower') && !target.classList.contains('damaged')) {
-                  state.buildings.damaged.push({row: nr, col: nc});
-                  target.classList.add('damaged');
-                  damagedCells.push(cellKey);
+                // Verificar si hay alguna estructura en esta posición
+                const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
+                const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
+                const hasAATurret = state.buildings.aaTurrets.some(aa => aa.row === nr && aa.col === nc);
+                const hasDeflector = state.buildings.deflectorTowers.some(dt => dt.row === nr && dt.col === nc);
+                const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
+                const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
+                const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
+                
+                if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
+                  const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+                  if (target) {
+                    state.buildings.damaged.push({row: nr, col: nc});
+                    target.classList.add('damaged');
+                    damagedCells.push(cellKey);
+                  }
                 }
               }
             }
@@ -2898,6 +3301,12 @@ function showXPNotification(xp, x, y, message = '') {
 }
 
 function createExplosion(x, y) {
+  // Reproducir sonido de explosión
+  const explosionSound = $('explosionSound');
+  explosionSound.currentTime = 0;
+  explosionSound.volume = 0.4;
+  explosionSound.play().catch(e => console.log('Error reproduciendo sonido:', e));
+  
   const colors = ['#ff4500', '#ff6347', '#ff8c00', '#ffa500', '#ffff00', '#ff0000'];
   const particleCount = 50;
  
@@ -3051,6 +3460,441 @@ function updateShop() {
   $('buyAATurretBtn').disabled = state.buildings.aaTurrets.length >= 2;
   $('buyAATurretBtn').textContent = state.buildings.aaTurrets.length >= 2 ? 'Máximo alcanzado' : 'Comprar';
 }
+
+// Market Functions
+const ITEM_NAMES = {
+  'statue': '🗿 Estatua Moai',
+  'flower': '🌸 Flor Decorativa',
+  'rocket': '🚀 Munición de Cohete',
+  'bomber': '✈️ Avión Bombardero',
+  'deflectorTower': '🛡️ Torre Desviadora',
+  'mine': '⛏️ Mina de Oro',
+  'rocketLauncher': '🚀 Lanza Cohetes',
+  'aaTurret': '🎯 Torreta Anti-Aérea',
+  'bomb': '💣 Bomba'
+};
+
+async function openMarket() {
+  loading(true);
+  
+  // Cancelar cualquier modo de colocación activo para prevenir duplicaciones
+  state.placing = null;
+  
+  show(modal('market'));
+  
+  // Reproducir música de la tienda
+  const shopMusic = $('shopMusic');
+  shopMusic.volume = 0.15; // Volumen al 15%
+  shopMusic.currentTime = 0; // Reiniciar desde el inicio
+  shopMusic.play().catch(err => console.log('Error al reproducir música:', err));
+  
+  // Actualizar oro
+  const goldSnap = await get(ref(db, `users/${state.user}/resources`));
+  if (goldSnap.exists()) {
+    state.resources.gold = goldSnap.val().gold || 0;
+  }
+  $('marketGold').textContent = state.resources.gold;
+  
+  // Cargar ofertas de compra
+  await loadMarketOffers();
+  
+  // Configurar buscador
+  const searchInput = $('marketSearchBuy');
+  searchInput.value = ''; // Limpiar buscador
+  searchInput.oninput = (e) => {
+    const searchTerm = e.target.value.toLowerCase().trim();
+    const offers = document.querySelectorAll('.market-offer-item');
+    const titleDiv = document.querySelector('#marketBuyList > div:first-child');
+    
+    if (searchTerm === '') {
+      // Si está vacío, mostrar todos y el título de "Productos Recomendados"
+      if (titleDiv) titleDiv.style.display = 'block';
+      offers.forEach(offer => {
+        offer.style.display = 'block';
+      });
+    } else {
+      // Ocultar título cuando se busca
+      if (titleDiv) titleDiv.style.display = 'none';
+      
+      // Filtrar por nombre del item o vendedor
+      offers.forEach(offer => {
+        const itemName = offer.dataset.itemName || '';
+        const seller = offer.dataset.seller || '';
+        
+        if (itemName.includes(searchTerm) || seller.includes(searchTerm)) {
+          offer.style.display = 'block';
+        } else {
+          offer.style.display = 'none';
+        }
+      });
+    }
+  };
+  
+  // Configurar pestañas
+  document.querySelectorAll('#marketModal .shop-tab').forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll('#marketModal .shop-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('#marketModal .shop-category').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const targetId = tab.dataset.tab;
+      document.getElementById(targetId).classList.add('active');
+      
+      if (targetId === 'market-sell') loadMarketSellInventory();
+      else if (targetId === 'market-my') loadMyMarketOffers();
+      else if (targetId === 'market-buy') $('marketSearchBuy').value = '';
+    }
+  });
+  
+  loading(false);
+}
+
+async function loadMarketOffers() {
+  const offersSnap = await get(ref(db, 'market'));
+  const buyList = $('marketBuyList');
+  buyList.innerHTML = '';
+  
+  // Agregar título de productos recomendados
+  const titleDiv = document.createElement('div');
+  titleDiv.style.gridColumn = '1/-1';
+  titleDiv.innerHTML = '<h3 style="color: #fff; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">📦 Productos Recomendados</h3>';
+  buyList.appendChild(titleDiv);
+  
+  if (!offersSnap.exists()) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.style.gridColumn = '1/-1';
+    emptyDiv.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No hay ofertas disponibles en el mercado</p>';
+    buyList.appendChild(emptyDiv);
+    return;
+  }
+  
+  const offers = offersSnap.val();
+  let hasOffers = false;
+  
+  Object.entries(offers).forEach(([offerId, offer]) => {
+    if (offer.seller === state.user) return; // No mostrar mis propias ofertas en comprar
+    
+    hasOffers = true;
+    const itemName = ITEM_NAMES[offer.item] || offer.item;
+    const emoji = itemName.split(' ')[0];
+    const name = itemName.split(' ').slice(1).join(' ');
+    
+    const offerDiv = document.createElement('div');
+    offerDiv.className = 'market-offer-item';
+    offerDiv.dataset.itemName = name.toLowerCase();
+    offerDiv.dataset.seller = offer.seller.toLowerCase();
+    offerDiv.style.border = '2px solid #667eea';
+    offerDiv.style.borderRadius = '10px';
+    offerDiv.style.padding = '20px';
+    offerDiv.style.background = 'white';
+    offerDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    offerDiv.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    offerDiv.onmouseenter = () => {
+      offerDiv.style.transform = 'translateY(-5px)';
+      offerDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+    };
+    offerDiv.onmouseleave = () => {
+      offerDiv.style.transform = 'translateY(0)';
+      offerDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    };
+    offerDiv.innerHTML = `
+      <div style="font-size: 48px; text-align: center; margin-bottom: 15px;">${emoji}</div>
+      <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #333;">${name}</div>
+      <div style="color: #666; margin-bottom: 10px; text-align: center; font-size: 13px;">👤 ${offer.seller}</div>
+      <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; font-size: 18px; font-weight: bold; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">💰 ${offer.price} Oro</div>
+      <button onclick="buyMarketItem('${offerId}', ${offer.price})" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🛒 Comprar</button>
+    `;
+    buyList.appendChild(offerDiv);
+  });
+  
+  if (!hasOffers) {
+    const emptyDiv = document.createElement('div');
+    emptyDiv.style.gridColumn = '1/-1';
+    emptyDiv.innerHTML = '<p style="text-align: center; color: #666; padding: 40px;">No hay ofertas de otros jugadores disponibles</p>';
+    buyList.appendChild(emptyDiv);
+  }
+}
+
+async function loadMarketSellInventory() {
+  const inventorySnap = await get(ref(db, `users/${state.user}/inventory`));
+  const sellInventory = $('marketSellInventory');
+  sellInventory.innerHTML = '';
+  
+  const items = inventorySnap.exists() ? (inventorySnap.val().items || []) : [];
+  const rockets = inventorySnap.exists() ? (inventorySnap.val().rockets || 0) : 0;
+  const bombers = inventorySnap.exists() ? (inventorySnap.val().bombers || 0) : 0;
+  
+  if (items.length === 0 && rockets === 0 && bombers === 0) {
+    sellInventory.innerHTML = '<p style="text-align: center; color: #666; padding: 40px; grid-column: 1/-1;">No tienes objetos para vender</p>';
+    return;
+  }
+  
+  // Agregar items del inventario
+  items.forEach(item => {
+    const itemDiv = document.createElement('div');
+    itemDiv.style.border = '2px solid #4CAF50';
+    itemDiv.style.borderRadius = '10px';
+    itemDiv.style.padding = '20px';
+    itemDiv.style.background = 'white';
+    itemDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    itemDiv.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    itemDiv.style.cursor = 'pointer';
+    itemDiv.onmouseenter = () => {
+      itemDiv.style.transform = 'translateY(-5px)';
+      itemDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+    };
+    itemDiv.onmouseleave = () => {
+      itemDiv.style.transform = 'translateY(0)';
+      itemDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    };
+    itemDiv.innerHTML = `
+      <div style="font-size: 48px; text-align: center; margin-bottom: 15px;">${ITEM_NAMES[item]?.split(' ')[0] || '📦'}</div>
+      <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #333;">${ITEM_NAMES[item]?.split(' ').slice(1).join(' ') || item}</div>
+      <button onclick="sellMarketItem('${item}')" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #89ff00 0%, #00bcd4 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">💰 Vender</button>
+    `;
+    sellInventory.appendChild(itemDiv);
+  });
+  
+  // Agregar cohetes
+  if (rockets > 0) {
+    const rocketDiv = document.createElement('div');
+    rocketDiv.style.border = '2px solid #FF6347';
+    rocketDiv.style.borderRadius = '10px';
+    rocketDiv.style.padding = '20px';
+    rocketDiv.style.background = 'white';
+    rocketDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    rocketDiv.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    rocketDiv.style.cursor = 'pointer';
+    rocketDiv.onmouseenter = () => {
+      rocketDiv.style.transform = 'translateY(-5px)';
+      rocketDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+    };
+    rocketDiv.onmouseleave = () => {
+      rocketDiv.style.transform = 'translateY(0)';
+      rocketDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    };
+    rocketDiv.innerHTML = `
+      <div style="font-size: 48px; text-align: center; margin-bottom: 15px;">🚀</div>
+      <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #333;">Munición de Cohete</div>
+      <div style="text-align: center; color: #666; margin-bottom: 15px; font-size: 14px;">📦 Cantidad: <strong>${rockets}</strong></div>
+      <button onclick="sellMarketItem('rocket')" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #89ff00 0%, #00bcd4 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">💰 Vender</button>
+    `;
+    sellInventory.appendChild(rocketDiv);
+  }
+  
+  // Agregar bombarderos
+  if (bombers > 0) {
+    const bomberDiv = document.createElement('div');
+    bomberDiv.style.border = '2px solid #4169E1';
+    bomberDiv.style.borderRadius = '10px';
+    bomberDiv.style.padding = '20px';
+    bomberDiv.style.background = 'white';
+    bomberDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    bomberDiv.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    bomberDiv.style.cursor = 'pointer';
+    bomberDiv.onmouseenter = () => {
+      bomberDiv.style.transform = 'translateY(-5px)';
+      bomberDiv.style.boxShadow = '0 4px 12px rgba(0,0,0,0.2)';
+    };
+    bomberDiv.onmouseleave = () => {
+      bomberDiv.style.transform = 'translateY(0)';
+      bomberDiv.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+    };
+    bomberDiv.innerHTML = `
+      <div style="font-size: 48px; text-align: center; margin-bottom: 15px;">✈️</div>
+      <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #333;">Avión Bombardero</div>
+      <div style="text-align: center; color: #666; margin-bottom: 15px; font-size: 14px;">📦 Cantidad: <strong>${bombers}</strong></div>
+      <button onclick="sellMarketItem('bomber')" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #89ff00 0%, #00bcd4 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">💰 Vender</button>
+    `;
+    sellInventory.appendChild(bomberDiv);
+  }
+}
+
+async function loadMyMarketOffers() {
+  const offersSnap = await get(ref(db, 'market'));
+  const myOffers = $('marketMyOffers');
+  myOffers.innerHTML = '';
+  
+  if (!offersSnap.exists()) {
+    myOffers.innerHTML = '<p style="text-align: center; color: #666; padding: 40px; grid-column: 1/-1;">No tienes ofertas activas</p>';
+    return;
+  }
+  
+  const offers = offersSnap.val();
+  const myOffersList = Object.entries(offers).filter(([_, offer]) => offer.seller === state.user);
+  
+  if (myOffersList.length === 0) {
+    myOffers.innerHTML = '<p style="text-align: center; color: #666; padding: 40px; grid-column: 1/-1;">No tienes ofertas activas</p>';
+    return;
+  }
+  
+  myOffersList.forEach(([offerId, offer]) => {
+    const offerDiv = document.createElement('div');
+    offerDiv.style.border = '3px solid #4CAF50';
+    offerDiv.style.borderRadius = '10px';
+    offerDiv.style.padding = '20px';
+    offerDiv.style.background = 'linear-gradient(135deg, #f0fff4 0%, #e8f5e9 100%)';
+    offerDiv.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)';
+    offerDiv.style.transition = 'transform 0.2s, box-shadow 0.2s';
+    offerDiv.onmouseenter = () => {
+      offerDiv.style.transform = 'translateY(-5px)';
+      offerDiv.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)';
+    };
+    offerDiv.onmouseleave = () => {
+      offerDiv.style.transform = 'translateY(0)';
+      offerDiv.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)';
+    };
+    
+    const itemName = ITEM_NAMES[offer.item] || offer.item;
+    const emoji = itemName.split(' ')[0];
+    const name = itemName.split(' ').slice(1).join(' ');
+    
+    offerDiv.innerHTML = `
+      <div style="font-size: 48px; text-align: center; margin-bottom: 15px;">${emoji}</div>
+      <div style="font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 15px; color: #2e7d32;">${name}</div>
+      <div style="background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%); color: #000; font-size: 20px; font-weight: bold; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">💰 ${offer.price} Oro</div>
+      <button onclick="cancelMarketOffer('${offerId}', '${offer.item}')" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #ff0000 0%, #8b0000 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">🗑️ Cancelar Oferta</button>
+    `;
+    myOffers.appendChild(offerDiv);
+  });
+}
+
+window.sellMarketItem = async function(item) {
+  const price = prompt(`¿A qué precio quieres vender ${ITEM_NAMES[item] || item}? (en oro)`);
+  if (!price || isNaN(price) || parseInt(price) <= 0) return alert('Precio inválido');
+  
+  loading(true);
+  
+  // Verificar que el usuario tiene el item
+  const inventorySnap = await get(ref(db, `users/${state.user}/inventory`));
+  if (!inventorySnap.exists()) {
+    loading(false);
+    return alert('No tienes este objeto');
+  }
+  
+  const inventory = inventorySnap.val();
+  let hasItem = false;
+  
+  if (item === 'rocket') {
+    if ((inventory.rockets || 0) > 0) {
+      hasItem = true;
+      await set(ref(db, `users/${state.user}/inventory/rockets`), (inventory.rockets || 0) - 1);
+    }
+  } else if (item === 'bomber') {
+    if ((inventory.bombers || 0) > 0) {
+      hasItem = true;
+      await set(ref(db, `users/${state.user}/inventory/bombers`), (inventory.bombers || 0) - 1);
+    }
+  } else {
+    const items = inventory.items || [];
+    if (items.includes(item)) {
+      hasItem = true;
+      items.splice(items.indexOf(item), 1);
+      await set(ref(db, `users/${state.user}/inventory/items`), items);
+    }
+  }
+  
+  if (!hasItem) {
+    loading(false);
+    return alert('No tienes este objeto');
+  }
+  
+  // Cancelar modo de colocación si estaba activo
+  if (state.placing === item || state.placing === 'statue' || state.placing === 'flower') {
+    state.placing = null;
+  }
+  
+  // Crear oferta en el mercado
+  const offerId = Date.now() + '_' + state.user;
+  await set(ref(db, `market/${offerId}`), {
+    seller: state.user,
+    item: item,
+    price: parseInt(price),
+    timestamp: Date.now()
+  });
+  
+  alert('¡Oferta publicada en el mercado!');
+  await loadMarketSellInventory();
+  loading(false);
+};
+
+window.buyMarketItem = async function(offerId, price) {
+  if (state.resources.gold < price) return alert(`Necesitas ${price} de oro. Tienes ${state.resources.gold}.`);
+  
+  if (!confirm(`¿Comprar este objeto por ${price} oro?`)) return;
+  
+  loading(true);
+  
+  // Obtener la oferta
+  const offerSnap = await get(ref(db, `market/${offerId}`));
+  if (!offerSnap.exists()) {
+    loading(false);
+    return alert('Esta oferta ya no está disponible');
+  }
+  
+  const offer = offerSnap.val();
+  
+  // Transferir oro
+  state.resources.gold -= price;
+  await set(ref(db, `users/${state.user}/resources/gold`), state.resources.gold);
+  
+  const sellerGoldSnap = await get(ref(db, `users/${offer.seller}/resources/gold`));
+  const sellerGold = (sellerGoldSnap.val() || 0) + price;
+  await set(ref(db, `users/${offer.seller}/resources/gold`), sellerGold);
+  
+  // Transferir item
+  const buyerInventorySnap = await get(ref(db, `users/${state.user}/inventory`));
+  const buyerInventory = buyerInventorySnap.val() || { items: [], rockets: 0, bombers: 0 };
+  
+  if (offer.item === 'rocket') {
+    buyerInventory.rockets = (buyerInventory.rockets || 0) + 1;
+    await set(ref(db, `users/${state.user}/inventory/rockets`), buyerInventory.rockets);
+  } else if (offer.item === 'bomber') {
+    buyerInventory.bombers = (buyerInventory.bombers || 0) + 1;
+    await set(ref(db, `users/${state.user}/inventory/bombers`), buyerInventory.bombers);
+  } else {
+    buyerInventory.items = buyerInventory.items || [];
+    buyerInventory.items.push(offer.item);
+    await set(ref(db, `users/${state.user}/inventory/items`), buyerInventory.items);
+  }
+  
+  // Eliminar oferta del mercado
+  await set(ref(db, `market/${offerId}`), null);
+  
+  alert('¡Compra realizada con éxito!');
+  $('marketGold').textContent = state.resources.gold;
+  await loadMarketOffers();
+  loading(false);
+};
+
+window.cancelMarketOffer = async function(offerId, item) {
+  if (!confirm('¿Cancelar esta oferta? El objeto volverá a tu inventario.')) return;
+  
+  loading(true);
+  
+  // Devolver item al inventario
+  const inventorySnap = await get(ref(db, `users/${state.user}/inventory`));
+  const inventory = inventorySnap.val() || { items: [], rockets: 0, bombers: 0 };
+  
+  if (item === 'rocket') {
+    inventory.rockets = (inventory.rockets || 0) + 1;
+    await set(ref(db, `users/${state.user}/inventory/rockets`), inventory.rockets);
+  } else if (item === 'bomber') {
+    inventory.bombers = (inventory.bombers || 0) + 1;
+    await set(ref(db, `users/${state.user}/inventory/bombers`), inventory.bombers);
+  } else {
+    inventory.items = inventory.items || [];
+    inventory.items.push(item);
+    await set(ref(db, `users/${state.user}/inventory/items`), inventory.items);
+  }
+  
+  // Eliminar oferta del mercado
+  await set(ref(db, `market/${offerId}`), null);
+  
+  alert('Oferta cancelada. El objeto ha vuelto a tu inventario.');
+  await loadMyMarketOffers();
+  loading(false);
+};
+
 // Shop Functions
 $('buyMineBtn').onclick = async () => {
   if (state.buildings.mines.length >= 2) return alert('Ya tienes el máximo de minas (2)');
@@ -3799,12 +4643,15 @@ $('backButton').onclick = () => {
     document.querySelector('.island-view').style.pointerEvents = 'none';
     $('islandGridToggle').style.opacity = 0;
     $('islandGridToggle').style.pointerEvents = 'none';
+    $('islandTextureToggle').style.opacity = 0;
+    $('islandTextureToggle').style.pointerEvents = 'none';
     $('islandAchievementsButton').style.opacity = 0;
     $('islandAchievementsButton').style.pointerEvents = 'none';
     $('resourcesPanel').style.display = 'none';
     $('userInfoPanel').style.display = 'none';
     $('shopButton').style.display = 'none';
     $('inventoryButton').style.display = 'none';
+    $('marketButton').style.display = 'none';
     $('attackButton').style.display = 'none';
     document.querySelector('.map-view').style.opacity = 1;
   }, 400);
@@ -3821,6 +4668,8 @@ function transition(toIsland) {
       document.querySelector('.island-view').style.pointerEvents = 'auto';
       $('islandGridToggle').style.opacity = 1;
       $('islandGridToggle').style.pointerEvents = 'auto';
+      $('islandTextureToggle').style.opacity = 1;
+      $('islandTextureToggle').style.pointerEvents = 'auto';
       $('islandAchievementsButton').style.opacity = 1;
       $('islandAchievementsButton').style.pointerEvents = 'auto';
       $('resourcesPanel').style.display = 'block';
@@ -3841,6 +4690,12 @@ $('islandGridToggle').onclick = () => {
   $('islandGrid').classList.toggle('no-grid');
   $('islandGridToggle').textContent = state.grids.island ? 'Quitar Cuadrícula' : 'Mostrar Cuadrícula';
 };
+// Texture Toggle (solo en vista de isla)
+$('islandTextureToggle').onclick = () => {
+  state.textureMode = !state.textureMode;
+  document.body.classList.toggle('texture-mode');
+  $('islandTextureToggle').textContent = state.textureMode ? '🎨 Normal' : '🎨 Texturas';
+};
 // Day/Night Toggle
 $('dayNightToggle').onclick = () => {
   state.nightMode = !state.nightMode;
@@ -3850,11 +4705,33 @@ $('dayNightToggle').onclick = () => {
 // Modal Close Buttons
 $('closeShop').onclick = () => hide(modal('shop'));
 $('closeInventory').onclick = () => hide(modal('inventory'));
+$('closeMarket').onclick = () => {
+  hide(modal('market'));
+  // Bajar gradualmente el volumen de la música antes de pausar
+  const shopMusic = $('shopMusic');
+  const fadeOutInterval = setInterval(() => {
+    if (shopMusic.volume > 0.01) {
+      shopMusic.volume = Math.max(0, shopMusic.volume - 0.02);
+    } else {
+      shopMusic.volume = 0.15; // Restaurar volumen para la próxima vez
+      shopMusic.pause();
+      clearInterval(fadeOutInterval);
+    }
+  }, 50); // Bajar cada 50ms
+};
 $('closeGlobalShop').onclick = () => {
   hide(modal('globalShop'));
-  // Pausar música de la tienda
+  // Bajar gradualmente el volumen de la música antes de pausar
   const shopMusic = $('shopMusic');
-  shopMusic.pause();
+  const fadeOutInterval = setInterval(() => {
+    if (shopMusic.volume > 0.01) {
+      shopMusic.volume = Math.max(0, shopMusic.volume - 0.02);
+    } else {
+      shopMusic.volume = 0.15; // Restaurar volumen para la próxima vez
+      shopMusic.pause();
+      clearInterval(fadeOutInterval);
+    }
+  }, 50); // Bajar cada 50ms
 };
 $('closeTopPlayers').onclick = () => hide(modal('topPlayers'));
 // Sistema de pestañas de la tienda global
@@ -3888,6 +4765,10 @@ $('spectateBtn').onclick = async () => {
 $('shopButton').onclick = () => {
   show(modal('shop'));
   updateShop();
+};
+$('marketButton').onclick = async () => {
+  if (!state.user) return alert('Debes iniciar sesión para acceder al mercado');
+  await openMarket();
 };
 $('attackButton').onclick = async () => {
   show(modal('attack'));
