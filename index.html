@@ -143,6 +143,16 @@ body.night-mode .deflector-tower { background-color: #008B8B; }
   0%, 100% { box-shadow: 0 0 5px #00CED1; }
   50% { box-shadow: 0 0 15px #00CED1, 0 0 25px #00CED1; }
 }
+.aa-turret {
+  background-color: #FF6347;
+  color: white;
+  animation: aaTurretPulse 1.5s infinite;
+}
+body.night-mode .aa-turret { background-color: #8B0000; }
+@keyframes aaTurretPulse {
+  0%, 100% { box-shadow: 0 0 5px #FF6347; }
+  50% { box-shadow: 0 0 15px #FF6347, 0 0 25px #FF4500; }
+}
 @keyframes splashAnimation {
   0% { transform: scale(0.5); opacity: 1; }
   50% { transform: scale(1.5); opacity: 0.8; }
@@ -734,6 +744,15 @@ body.night-mode .center { background-color: #5d2e0b; }
     </div>
     <div class="shop-item">
       <div class="shop-item-info">
+        <div class="shop-item-name">🎯 Torreta Anti-Aérea</div>
+        <div class="shop-item-desc">Derriba aviones bombarderos enemigos</div>
+        <div class="shop-item-desc">Tienes: <span id="aaTurretCount">0</span> / 2</div>
+        <div class="shop-item-cost">💰 1800 Oro</div>
+      </div>
+      <button id="buyAATurretBtn">Comprar</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
         <div class="shop-item-name">🛠️ Pala</div>
         <div class="shop-item-desc">Repara áreas dañadas en tu aldea</div>
         <div class="shop-item-desc" style="margin-top: 8px;">
@@ -959,7 +978,7 @@ const state = {
   hasBuilt: false,
   currentVillage: { owner: null, id: null },
   resources: { gold: 0 },
-  buildings: { mines: [], rocketLaunchers: [], statues: [], flowers: [], deflectorTowers: [], damaged: [] },
+  buildings: { mines: [], rocketLaunchers: [], statues: [], flowers: [], deflectorTowers: [], aaTurrets: [], damaged: [] },
   level: { level: 1, xp: 0, needed: 100 },
   inventory: [],
   placing: null,
@@ -980,7 +999,8 @@ const state = {
   spectating: false, // Modo espectador activo
   spectateListener: null, // Listener de Firebase para espectador
   spectateAttackListener: null, // Listener de ataques para espectador
-  bomberActive: false // Indica si hay un bombardero activo
+  bomberActive: false, // Indica si hay un bombardero activo
+  dragLocked: false // Bloquear movimiento del mapa durante ataques
 };
 const ACHIEVEMENTS = {
   firstVillage: { id: 'firstVillage', name: 'Primer Constructor', desc: 'Construye tu primera aldea', icon: '🏰', reward: '+50 XP' },
@@ -993,7 +1013,8 @@ const ACHIEVEMENTS = {
   explorer: { id: 'explorer', name: 'Explorador', desc: 'Visita la aldea de otro jugador', icon: '🗺️', reward: '+25 XP' },
   rocketLauncher: { id: 'rocketLauncher', name: 'Pionero Espacial', desc: 'Construye el lanza cohetes', icon: '🚀', reward: '+500 XP' },
   deflectorTower: { id: 'deflectorTower', name: 'Escudo Defensivo', desc: 'Construye la Torre Desviadora', icon: '🛡️', reward: '+300 XP' },
-  spectator: { id: 'spectator', name: 'Observador', desc: 'Espectea el ataque de un jugador', icon: '👁️', reward: '+50 XP' }
+  spectator: { id: 'spectator', name: 'Observador', desc: 'Espectea el ataque de un jugador', icon: '👁️', reward: '+50 XP' },
+  planeDestroyer: { id: 'planeDestroyer', name: 'As del Cielo', desc: 'Derriba un avión bombardero enemigo', icon: '🎯', reward: '+200 XP' }
 };
 // DOM Elements
 const $ = id => document.getElementById(id);
@@ -1445,6 +1466,10 @@ function renderIsland() {
       const c = grid.querySelector(`[data-row="${r.row}"][data-col="${r.col}"]`);
       if (c) { c.classList.add('rocket-launcher'); c.textContent = '🚀'; }
     });
+    state.buildings.aaTurrets.forEach(t => {
+      const c = grid.querySelector(`[data-row="${t.row}"][data-col="${t.col}"]`);
+      if (c) { c.classList.add('aa-turret'); c.textContent = '🎯'; }
+    });
     state.buildings.statues.forEach(s => {
       const c = grid.querySelector(`[data-row="${s.row}"][data-col="${s.col}"]`);
       if (c) { c.classList.add('statue'); c.textContent = '🗿'; }
@@ -1468,12 +1493,12 @@ async function handleIslandClick(cell) {
   const r = +cell.dataset.row, c = +cell.dataset.col;
  
   if (r === 10 && c === 10) return alert('No puedes interactuar con el castillo');
-  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower')) {
+  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower')) {
     return alert('Ya hay una estructura aquí');
   }
   
   // BUGFIX: No permitir colocar estructuras en bloques destruidos
-  if (cell.classList.contains('damaged') && (state.placing === 'mine' || state.placing === 'rocketLauncher' || state.placing === 'statue' || state.placing === 'flower' || state.placing === 'deflectorTower')) {
+  if (cell.classList.contains('damaged') && (state.placing === 'mine' || state.placing === 'rocketLauncher' || state.placing === 'aaTurret' || state.placing === 'statue' || state.placing === 'flower' || state.placing === 'deflectorTower')) {
     return alert('No puedes construir en un área dañada. Repárala primero con una pala.');
   }
  
@@ -1481,6 +1506,7 @@ async function handleIslandClick(cell) {
  
   if (own && state.placing === 'mine') await buildMine(r, c, cell);
   else if (own && state.placing === 'rocketLauncher') await buildRocketLauncher(r, c, cell);
+  else if (own && state.placing === 'aaTurret') await buildAATurret(r, c, cell);
   else if (own && state.placing === 'deflectorTower') await buildDeflectorTower(r, c, cell);
   else if (own && state.placing === 'statue') await placeStatue(r, c, cell);
   else if (own && state.placing === 'flower') await placeFlower(r, c, cell);
@@ -1499,6 +1525,7 @@ async function buildMine(r, c, cell) {
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1520,6 +1547,7 @@ async function buildRocketLauncher(r, c, cell) {
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1534,12 +1562,33 @@ async function buildRocketLauncher(r, c, cell) {
   alert('¡Lanza Cohetes construido! +100 XP');
   loading(false);
 }
+async function buildAATurret(r, c, cell) {
+  loading(true);
+  state.buildings.aaTurrets.push({row: r, col: c});
+  await set(ref(db, `users/${state.user}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
+    deflectorTowers: state.buildings.deflectorTowers,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  cell.classList.add('aa-turret');
+  cell.textContent = '🎯';
+  await addXP(80);
+  state.placing = null;
+  updateShop();
+  alert('¡Torreta Anti-Aérea construida! +80 XP');
+  loading(false);
+}
 async function buildDeflectorTower(r, c, cell) {
   loading(true);
   state.buildings.deflectorTowers.push({row: r, col: c});
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1570,6 +1619,7 @@ async function placeStatue(r, c, cell) {
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1593,6 +1643,7 @@ async function placeFlower(r, c, cell) {
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1662,6 +1713,7 @@ async function repair(r, c, cell, shovelLevel = 1) {
   await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1684,7 +1736,14 @@ async function repair(r, c, cell, shovelLevel = 1) {
 }
 // Attack Functions
 async function launchBomb(r, c) {
+  // Prevenir múltiples clicks
+  if (state.dragLocked) return;
+  
   loading(true);
+  
+  // Bloquear movimiento del mapa y más clicks
+  state.dragLocked = true;
+  $('islandViewport').style.cursor = 'default';
   
   // ESCRIBIR EVENTO DE ATAQUE PARA ESPECTADORES
   await set(ref(db, `villages/${state.currentVillage.id}/currentAttack`), {
@@ -1704,7 +1763,7 @@ async function launchBomb(r, c) {
       if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
         const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
         if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-            !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
+            !target.classList.contains('aa-turret') && !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
           state.buildings.damaged.push({row: nr, col: nc});
           target.classList.add('damaged');
         }
@@ -1714,6 +1773,7 @@ async function launchBomb(r, c) {
   await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -1740,6 +1800,8 @@ async function launchBomb(r, c) {
   
   state.attacking = false;
   state.placing = null;
+  state.dragLocked = false;
+  $('islandViewport').style.cursor = 'grab';
   await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
   await set(ref(db, `villages/${state.currentVillage.id}/currentAttack`), { active: false });
   
@@ -1749,11 +1811,20 @@ async function launchBomb(r, c) {
   loading(false);
 }
 async function launchRocketAttack(r, c) {
+  // Prevenir múltiples clicks
+  if (state.dragLocked) return;
+  
+  // Bloquear movimiento del mapa y más clicks
+  state.dragLocked = true;
+  $('islandViewport').style.cursor = 'default';
+  
   // Verificar si hay un bombardero activo
   if (state.bomberActive) {
     alert('¡Espera a que termine el bombardeo antes de lanzar un cohete!');
     state.attacking = false;
     state.placing = null;
+    state.dragLocked = false;
+    $('islandViewport').style.cursor = 'grab';
     await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
     loading(false);
     return;
@@ -1767,6 +1838,8 @@ async function launchRocketAttack(r, c) {
     alert('¡Necesitas munición de cohetes para realizar este ataque! Compra cohetes en la tienda global.');
     state.attacking = false;
     state.placing = null;
+    state.dragLocked = false;
+    $('islandViewport').style.cursor = 'grab';
     await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
     loading(false);
     return;
@@ -2221,6 +2294,8 @@ async function launchRocketAttack(r, c) {
       
       state.attacking = false;
       state.placing = null;
+      state.dragLocked = false;
+      $('islandViewport').style.cursor = 'grab';
       await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
       await set(ref(db, `villages/${attackTarget.id}/currentAttack`), { active: false });
       loading(false);
@@ -2316,6 +2391,8 @@ async function launchRocketAttack(r, c) {
       
       state.attacking = false;
       state.placing = null;
+      state.dragLocked = false;
+      $('islandViewport').style.cursor = 'grab';
       await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
       await set(ref(db, `villages/${attackTarget.id}/currentAttack`), { active: false });
       
@@ -2360,7 +2437,7 @@ async function launchRocketAttack(r, c) {
       if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
         const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
         if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
-            !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
+            !target.classList.contains('aa-turret') && !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && !target.classList.contains('flower') && !target.classList.contains('damaged')) {
           state.buildings.damaged.push({row: nr, col: nc});
           target.classList.add('damaged');
         }
@@ -2405,6 +2482,8 @@ async function launchRocketAttack(r, c) {
   
   state.attacking = false;
   state.placing = null;
+  state.dragLocked = false;
+  $('islandViewport').style.cursor = 'grab';
   await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
   
   // GUARDAR ACCIONES PARA ESPECTADORES CON DELAY DE 1 SEGUNDO
@@ -2428,6 +2507,13 @@ async function launchRocketAttack(r, c) {
   }, 1000);
 }
 async function launchBomberAttack(r, c) {
+  // Prevenir múltiples clicks
+  if (state.dragLocked) return;
+  
+  // Bloquear movimiento del mapa y más clicks
+  state.dragLocked = true;
+  $('islandViewport').style.cursor = 'default';
+  
   // Verificar si el usuario tiene aviones bombarderos
   const bomberSnap = await get(ref(db, `users/${state.user}/inventory/bomberPlanes`));
   const bomberCount = bomberSnap.exists() ? bomberSnap.val() : 0;
@@ -2436,6 +2522,8 @@ async function launchBomberAttack(r, c) {
     alert('¡Necesitas un Avión Bombardero! Cómpralo en la tienda global.');
     state.attacking = false;
     state.placing = null;
+    state.dragLocked = false;
+    $('islandViewport').style.cursor = 'grab';
     await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
     loading(false);
     return;
@@ -2471,6 +2559,119 @@ async function launchBomberAttack(r, c) {
   plane.style.filter = 'drop-shadow(0 0 10px rgba(100, 100, 255, 0.8))';
   document.body.appendChild(plane);
   
+  // VERIFICAR SI HAY TORRETAS ANTI-AÉREAS que disparen cada 0.5s
+  const aaTurrets = state.buildings.aaTurrets || [];
+  let planeDestroyed = false;
+  let planeHealth = 3; // El avión aguanta 3 impactos
+  
+  if (aaTurrets.length > 0) {
+    // Intervalo para que las torretas disparen cada 0.5 segundos
+    const aaInterval = setInterval(() => {
+      if (planeDestroyed) {
+        clearInterval(aaInterval);
+        return;
+      }
+      
+      // Cada torreta impacta (100% de probabilidad)
+      for (const turret of aaTurrets) {
+        if (planeDestroyed) break;
+        
+        planeHealth--; // Reducir vida del avión
+        
+        // Efecto visual de la torreta disparando
+        const turretCell = $('islandGrid').querySelector(`[data-row="${turret.row}"][data-col="${turret.col}"]`);
+        if (turretCell) {
+          const turretRect = turretCell.getBoundingClientRect();
+          const planeRect = plane.getBoundingClientRect();
+          
+          // Efecto de brillo en la torreta
+          turretCell.style.boxShadow = '0 0 30px #FF6347, 0 0 50px #FF4500';
+          setTimeout(() => turretCell.style.boxShadow = '', 1000);
+          
+          // Crear misil de la torreta
+          const missile = document.createElement('div');
+          missile.style.position = 'fixed';
+          missile.style.fontSize = '20px';
+          missile.style.left = (turretRect.left + turretRect.width / 2) + 'px';
+          missile.style.top = (turretRect.top + turretRect.height / 2) + 'px';
+          missile.style.zIndex = '10002';
+          missile.textContent = '🚀';
+          missile.style.transition = 'all 0.5s linear';
+          document.body.appendChild(missile);
+          
+          // Animar misil hacia el avión
+          setTimeout(() => {
+            missile.style.left = (planeRect.left + planeRect.width / 2) + 'px';
+            missile.style.top = (planeRect.top + planeRect.height / 2) + 'px';
+          }, 50);
+          
+          // Impacto después de 500ms
+          setTimeout(async () => {
+            missile.remove();
+            
+            // Pequeña explosión de impacto
+            const hitExplosion = document.createElement('div');
+            hitExplosion.style.position = 'fixed';
+            hitExplosion.style.fontSize = '40px';
+            hitExplosion.style.left = (planeRect.left + planeRect.width / 2 - 20) + 'px';
+            hitExplosion.style.top = (planeRect.top + planeRect.height / 2 - 20) + 'px';
+            hitExplosion.style.zIndex = '10003';
+            hitExplosion.textContent = '💥';
+            hitExplosion.style.animation = 'explode 0.5s ease-out forwards';
+            document.body.appendChild(hitExplosion);
+            setTimeout(() => hitExplosion.remove(), 500);
+            
+            // Si la vida llega a 0, destruir el avión
+            if (planeHealth <= 0 && !planeDestroyed) {
+              planeDestroyed = true;
+              clearInterval(aaInterval);
+              plane.remove();
+              
+              // Explosión grande en el aire
+              const explosion = document.createElement('div');
+              explosion.style.position = 'fixed';
+              explosion.style.fontSize = '80px';
+              explosion.style.left = (planeRect.left + planeRect.width / 2 - 40) + 'px';
+              explosion.style.top = (planeRect.top + planeRect.height / 2 - 40) + 'px';
+              explosion.style.zIndex = '10003';
+              explosion.textContent = '💥';
+              explosion.style.animation = 'explode 1s ease-out forwards';
+              document.body.appendChild(explosion);
+              
+              setTimeout(() => explosion.remove(), 1000);
+              
+              // Mensaje de defensa exitosa (solo una vez)
+              showXPNotification(0, window.innerWidth / 2 - 100, window.innerHeight / 2, '🎯 AVIÓN DERRIBADO!');
+              
+              // Desbloquear logro
+              await unlockAchievement('planeDestroyer');
+              
+              state.bomberActive = false;
+              state.attacking = false;
+              state.placing = null;
+              state.dragLocked = false;
+              $('islandViewport').style.cursor = 'grab';
+              loading(false);
+            }
+          }, 500);
+        }
+        
+        break;
+      }
+    }, 700); // Disparar cada 0.7 segundos
+    
+    // Limpiar el intervalo después de 5 segundos (duración del vuelo)
+    setTimeout(() => {
+      clearInterval(aaInterval);
+    }, 5000);
+  }
+  
+  // Si el avión fue derribado, terminar la función aquí
+  if (planeDestroyed) {
+    await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+    return;
+  }
+  
   // Variables para la animación
   const planeStartTime = Date.now();
   const planeDuration = 5000; // 5 segundos para subir
@@ -2483,6 +2684,12 @@ async function launchBomberAttack(r, c) {
   
   // Partículas de humo del avión
   const smokeInterval = setInterval(() => {
+    // Detener si el avión fue destruido
+    if (planeDestroyed) {
+      clearInterval(smokeInterval);
+      return;
+    }
+    
     const elapsed = Date.now() - planeStartTime;
     const progress = Math.min(elapsed / planeDuration, 1);
     const currentPlaneY = planeStartY - (progress * (planeStartY - planeEndY));
@@ -2524,6 +2731,12 @@ async function launchBomberAttack(r, c) {
   
   // Soltar bombas cada 0.7 segundos
   const bombInterval = setInterval(async () => {
+    // Detener si el avión fue destruido
+    if (planeDestroyed) {
+      clearInterval(bombInterval);
+      return;
+    }
+    
     const elapsed = Date.now() - planeStartTime;
     const progress = Math.min(elapsed / planeDuration, 1);
     
@@ -2596,6 +2809,11 @@ async function launchBomberAttack(r, c) {
   
   // Animar avión subiendo
   const animatePlane = () => {
+    // Detener animación si el avión fue destruido
+    if (planeDestroyed) {
+      return;
+    }
+    
     const elapsed = Date.now() - planeStartTime;
     const progress = Math.min(elapsed / planeDuration, 1);
     const currentY = planeStartY - (progress * (planeStartY - planeEndY));
@@ -2628,6 +2846,7 @@ async function launchBomberAttack(r, c) {
   await set(ref(db, `users/${attackTarget.owner}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
@@ -2653,6 +2872,8 @@ async function launchBomberAttack(r, c) {
   
   state.attacking = false;
   state.placing = null;
+  state.dragLocked = false;
+  $('islandViewport').style.cursor = 'grab';
   await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
   
   showXPNotification(40, window.innerWidth / 2 - 50, window.innerHeight / 2);
@@ -2757,6 +2978,7 @@ async function loadBuildings(owner) {
   state.buildings = {
     mines: b.goldMines || b.mines || [],
     rocketLaunchers: b.rocketLaunchers || [],
+    aaTurrets: b.aaTurrets || [],
     deflectorTowers: b.deflectorTowers || [],
     statues: b.statues || [],
     flowers: b.flowers || [],
@@ -2821,10 +3043,13 @@ function updateUI() {
 function updateShop() {
   $('mineCount').textContent = state.buildings.mines.length;
   $('rocketLauncherCount').textContent = state.buildings.rocketLaunchers.length;
+  $('aaTurretCount').textContent = state.buildings.aaTurrets.length;
   $('buyMineBtn').disabled = state.buildings.mines.length >= 2;
   $('buyMineBtn').textContent = state.buildings.mines.length >= 2 ? 'Máximo alcanzado' : 'Comprar';
   $('buyRocketLauncherBtn').disabled = state.buildings.rocketLaunchers.length >= 1;
   $('buyRocketLauncherBtn').textContent = state.buildings.rocketLaunchers.length >= 1 ? 'Máximo alcanzado' : 'Comprar';
+  $('buyAATurretBtn').disabled = state.buildings.aaTurrets.length >= 2;
+  $('buyAATurretBtn').textContent = state.buildings.aaTurrets.length >= 2 ? 'Máximo alcanzado' : 'Comprar';
 }
 // Shop Functions
 $('buyMineBtn').onclick = async () => {
@@ -2846,6 +3071,16 @@ $('buyRocketLauncherBtn').onclick = async () => {
   state.placing = 'rocketLauncher';
   hide(modal('shop'));
   alert('Haz click en una celda verde para colocar el lanza cohetes');
+};
+$('buyAATurretBtn').onclick = async () => {
+  if (state.buildings.aaTurrets.length >= 2) return alert('Ya tienes el máximo de torretas anti-aéreas (2)');
+  if (state.resources.gold < 1800) return alert(`Necesitas 1800 de oro. Tienes ${state.resources.gold}.`);
+  state.resources.gold -= 1800;
+  await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+  updateUI();
+  state.placing = 'aaTurret';
+  hide(modal('shop'));
+  alert('Haz click en una celda verde para colocar la torreta anti-aérea');
 };
 $('buyDeflectorTowerBtn').onclick = async () => {
   // Verificar si ya tiene el máximo
@@ -3741,6 +3976,7 @@ $('globalShopButton').onclick = async () => {
 // Drag & Zoom
 function setupDrag(viewport, world, view) {
   viewport.addEventListener('mousedown', e => {
+    if (state.dragLocked) return; // Bloquear si hay un ataque en curso
     if (e.target === viewport || e.target === world || e.target.classList.contains('cell')) {
       state.drag.active = true;
       state.drag.moved = false;
@@ -3752,16 +3988,16 @@ function setupDrag(viewport, world, view) {
  
   viewport.addEventListener('mouseup', () => {
     state.drag.active = false;
-    viewport.style.cursor = 'grab';
+    viewport.style.cursor = state.dragLocked ? 'default' : 'grab';
   });
  
   viewport.addEventListener('mouseleave', () => {
     state.drag.active = false;
-    viewport.style.cursor = 'grab';
+    viewport.style.cursor = state.dragLocked ? 'default' : 'grab';
   });
  
   viewport.addEventListener('mousemove', e => {
-    if (!state.drag.active) return;
+    if (!state.drag.active || state.dragLocked) return;
     e.preventDefault();
    
     const dx = Math.abs(e.clientX - state.drag.startX - view.x);
