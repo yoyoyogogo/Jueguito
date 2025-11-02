@@ -280,10 +280,11 @@ body.night-mode .center { background-color: #5d2e0b; }
 #dayNightToggle { top: 120px; right: 20px; font-size: 24px; }
 #backButton { bottom: 20px; left: 20px; font-size: 16px; }
 #islandGridToggle { bottom: 70px; left: 20px; opacity: 0; pointer-events: none; }
-#islandAchievementsButton { top: 170px; right: 20px; opacity: 0; pointer-events: none; }
+#islandAchievementsButton { bottom: 140px; right: 20px; opacity: 0; pointer-events: none; }
 #shopButton, #inventoryButton, #attackButton, #achievementsButton { bottom: 20px; right: 20px; display: none; }
 #inventoryButton { bottom: 80px; }
-#attackButton, #achievementsButton { bottom: 140px; }
+#achievementsButton { bottom: 140px; }
+#attackButton { bottom: 200px; }
 #globalShopButton { bottom: 80px; right: 20px; }
 #topPlayersButton { bottom: 20px; right: 20px; }
 .panel {
@@ -356,9 +357,20 @@ body.night-mode .center { background-color: #5d2e0b; }
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+  position: relative;
 }
 .modal-content.large { max-width: 600px; }
 .modal-content.small { max-width: 400px; }
+.modal-content.fullscreen {
+  max-width: 100%;
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  padding: 50px;
+  border-radius: 0;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  overflow-y: auto;
+}
 .modal-content h2 {
   color: white;
   margin: 0 0 20px 0;
@@ -375,6 +387,39 @@ body.night-mode .center { background-color: #5d2e0b; }
   gap: 15px;
 }
 .shop-item { justify-content: space-between; padding: 20px; }
+.shop-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid rgba(255,255,255,0.2);
+  padding-bottom: 10px;
+}
+.shop-tab {
+  flex: 1;
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.1);
+  border: none;
+  border-radius: 8px 8px 0 0;
+  color: white;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.shop-tab:hover {
+  background: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+.shop-tab.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+.shop-category {
+  display: none;
+}
+.shop-category.active {
+  display: block;
+}
 .top-player-item { cursor: pointer; transition: transform 0.2s, background 0.2s; }
 .top-player-item:hover {
   transform: translateX(5px);
@@ -437,6 +482,33 @@ body.night-mode .center { background-color: #5d2e0b; }
   font-size: 16px;
 }
 .modal-close:hover { background: rgba(255, 255, 255, 0.3); }
+.modal-close-top-left {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background: rgba(255, 0, 0, 0.8);
+  border: 3px solid white;
+  border-radius: 50%;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  transition: all 0.3s;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+}
+.modal-close-top-left:hover {
+  background: rgba(255, 0, 0, 1);
+  transform: scale(1.1);
+  box-shadow: 0 0 20px rgba(255, 0, 0, 0.6);
+}
 .login-tabs {
   display: flex;
   gap: 10px;
@@ -689,45 +761,71 @@ body.night-mode .center { background-color: #5d2e0b; }
   </div>
 </div>
 <div class="modal" id="globalShopModal">
-  <div class="modal-content">
+  <div class="modal-content fullscreen">
+    <button class="modal-close-top-left" id="closeGlobalShop">✕</button>
     <h2>🌐 Tienda Global</h2>
-    <div class="shop-item">
-      <div class="shop-item-info">
-        <div class="shop-item-name">🗿 Estatua Moai</div>
-        <div class="shop-item-desc">Estatua decorativa única para tu aldea</div>
-        <div class="shop-item-desc">Stock: <span id="statueStock">10</span></div>
-        <div class="shop-item-cost">💰 500 Oro</div>
-      </div>
-      <button id="buyStatueBtn">Comprar</button>
+    <div class="shop-tabs">
+      <button class="shop-tab active" data-tab="decorations">🎨 Decoraciones</button>
+      <button class="shop-tab" data-tab="weapons">⚔️ Armas</button>
+      <button class="shop-tab" data-tab="defenses">🛡️ Defensas</button>
     </div>
-    <div class="shop-item">
-      <div class="shop-item-info">
-        <div class="shop-item-name">🚀 Cohetes</div>
-        <div class="shop-item-desc">Municiones para el Lanza Cohetes</div>
-        <div class="shop-item-desc">Stock: <span id="rocketAmmoStock">10</span></div>
-        <div class="shop-item-cost">💰 3000 Oro</div>
+    
+    <!-- DECORACIONES -->
+    <div class="shop-category active" id="shop-decorations">
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🗿 Estatua Moai</div>
+          <div class="shop-item-desc">Estatua decorativa única para tu aldea</div>
+          <div class="shop-item-desc">Stock: <span id="statueStock">10</span></div>
+          <div class="shop-item-cost">💰 500 Oro</div>
+        </div>
+        <button id="buyStatueBtn">Comprar</button>
       </div>
-      <button id="buyRocketAmmoBtn">Comprar</button>
-    </div>
-    <div class="shop-item">
-      <div class="shop-item-info">
-        <div class="shop-item-name">🌸 Flor Decorativa</div>
-        <div class="shop-item-desc">Hermosa flor para decorar tu aldea</div>
-        <div class="shop-item-desc">Stock: <span id="flowerStock">15</span></div>
-        <div class="shop-item-cost">💰 200 Oro</div>
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🌸 Flor Decorativa</div>
+          <div class="shop-item-desc">Hermosa flor para decorar tu aldea</div>
+          <div class="shop-item-desc">Stock: <span id="flowerStock">15</span></div>
+          <div class="shop-item-cost">💰 200 Oro</div>
+        </div>
+        <button id="buyFlowerBtn">Comprar</button>
       </div>
-      <button id="buyFlowerBtn">Comprar</button>
     </div>
-    <div class="shop-item">
-      <div class="shop-item-info">
-        <div class="shop-item-name">🛡️ Torre Desviadora</div>
-        <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 5 celdas)</div>
-        <div class="shop-item-desc">Stock: <span id="deflectorTowerStock">5</span></div>
-        <div class="shop-item-cost">💰 1500 Oro</div>
+    
+    <!-- ARMAS -->
+    <div class="shop-category" id="shop-weapons">
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🚀 Cohetes</div>
+          <div class="shop-item-desc">Municiones para el Lanza Cohetes (daño 7x7)</div>
+          <div class="shop-item-desc">Stock: <span id="rocketAmmoStock">10</span></div>
+          <div class="shop-item-cost">💰 3000 Oro</div>
+        </div>
+        <button id="buyRocketAmmoBtn">Comprar</button>
       </div>
-      <button id="buyDeflectorTowerBtn">Comprar</button>
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">✈️ Avión Bombardero</div>
+          <div class="shop-item-desc">Bombardea en línea recta, daño 3x3 por bomba</div>
+          <div class="shop-item-desc">Stock: <span id="bomberPlaneStock">8</span></div>
+          <div class="shop-item-cost">💰 2500 Oro</div>
+        </div>
+        <button id="buyBomberPlaneBtn">Comprar</button>
+      </div>
     </div>
-    <button class="modal-close" id="closeGlobalShop">Cerrar</button>
+    
+    <!-- DEFENSAS -->
+    <div class="shop-category" id="shop-defenses">
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🛡️ Torre Desviadora</div>
+          <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 5 celdas)</div>
+          <div class="shop-item-desc">Stock: <span id="deflectorTowerStock">5</span></div>
+          <div class="shop-item-cost">💰 1500 Oro</div>
+        </div>
+        <button id="buyDeflectorTowerBtn">Comprar</button>
+      </div>
+    </div>
   </div>
 </div>
 <div class="modal" id="attackModal">
@@ -736,6 +834,7 @@ body.night-mode .center { background-color: #5d2e0b; }
     <button class="attack-option" data-attack="rob">Robar Oro (100 oro, roba hasta 50)</button>
     <button class="attack-option" data-attack="bomb">Lanzar Bomba (100 oro, daña área 3x3)</button>
     <button class="attack-option" data-attack="rocket">Lanzar Cohete (Requiere munición, daña área 7x7)</button>
+    <button class="attack-option" data-attack="bomber">✈️ Avión Bombardero (Requiere avión, bombardeo en línea)</button>
     <button class="modal-close" id="closeAttack">Cancelar</button>
   </div>
 </div>
@@ -837,6 +936,9 @@ body.night-mode .center { background-color: #5d2e0b; }
 </div>
 <div id="fade"></div>
 <div id="loading">Cargando...</div>
+<audio id="shopMusic" loop>
+  <source src="recursos/Untitled.mp3" type="audio/mpeg">
+</audio>
 <script type="module">
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import { getDatabase, ref, set, onValue, get, runTransaction } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
@@ -877,7 +979,8 @@ const state = {
   selectedVillage: null, // Aldea seleccionada para espectear
   spectating: false, // Modo espectador activo
   spectateListener: null, // Listener de Firebase para espectador
-  spectateAttackListener: null // Listener de eventos de ataque
+  spectateAttackListener: null, // Listener de ataques para espectador
+  bomberActive: false // Indica si hay un bombardero activo
 };
 const ACHIEVEMENTS = {
   firstVillage: { id: 'firstVillage', name: 'Primer Constructor', desc: 'Construye tu primera aldea', icon: '🏰', reward: '+50 XP' },
@@ -1387,6 +1490,7 @@ async function handleIslandClick(cell) {
   }
   else if (!own && state.placing === 'bomb') await launchBomb(r, c);
   else if (!own && state.placing === 'rocket_attack') await launchRocketAttack(r, c);
+  else if (!own && state.placing === 'bomber_attack') await launchBomberAttack(r, c);
 }
 // Building Functions
 async function buildMine(r, c, cell) {
@@ -1645,6 +1749,16 @@ async function launchBomb(r, c) {
   loading(false);
 }
 async function launchRocketAttack(r, c) {
+  // Verificar si hay un bombardero activo
+  if (state.bomberActive) {
+    alert('¡Espera a que termine el bombardeo antes de lanzar un cohete!');
+    state.attacking = false;
+    state.placing = null;
+    await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+    loading(false);
+    return;
+  }
+  
   // Verificar si el usuario tiene munición de cohetes
   const rocketAmmoSnap = await get(ref(db, `users/${state.user}/inventory/rocketAmmo`));
   const rocketAmmo = rocketAmmoSnap.exists() ? rocketAmmoSnap.val() : 0;
@@ -1684,7 +1798,6 @@ async function launchRocketAttack(r, c) {
 
   // Guardar datos del ataque y zoom actual
   const attackTarget = {row: r, col: c, owner: state.currentVillage.owner, id: state.currentVillage.id};
-  const targetBuildings = JSON.parse(JSON.stringify(state.buildings));
   const savedZoom = {
     x: state.view.island.x,
     y: state.view.island.y,
@@ -1861,8 +1974,7 @@ async function launchRocketAttack(r, c) {
   $('fade').style.opacity = 1;
   await new Promise(resolve => setTimeout(resolve, 400));
  
-  // Restaurar estado de construcción
-  state.buildings = targetBuildings;
+  // Cargar aldea objetivo desde Firebase (sin restaurar state.buildings manualmente)
   state.skipCentering = true;
   await openIsland(attackTarget.owner);
   state.currentVillage.id = attackTarget.id;
@@ -2103,6 +2215,10 @@ async function launchRocketAttack(r, c) {
       $('shopButton').style.display = 'none';
       $('attackButton').style.display = 'block';
       
+      // RESTAURAR INTERACCIÓN
+      islandViewport.style.pointerEvents = 'auto';
+      islandWorld.style.pointerEvents = 'auto';
+      
       state.attacking = false;
       state.placing = null;
       await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
@@ -2193,6 +2309,10 @@ async function launchRocketAttack(r, c) {
       $('inventoryButton').style.display = 'none';
       $('shopButton').style.display = 'none';
       $('attackButton').style.display = 'block';
+      
+      // RESTAURAR INTERACCIÓN
+      islandViewport.style.pointerEvents = 'auto';
+      islandWorld.style.pointerEvents = 'auto';
       
       state.attacking = false;
       state.placing = null;
@@ -2306,6 +2426,237 @@ async function launchRocketAttack(r, c) {
     showXPNotification(50, window.innerWidth / 2 - 50, window.innerHeight / 2);
     loading(false);
   }, 1000);
+}
+async function launchBomberAttack(r, c) {
+  // Verificar si el usuario tiene aviones bombarderos
+  const bomberSnap = await get(ref(db, `users/${state.user}/inventory/bomberPlanes`));
+  const bomberCount = bomberSnap.exists() ? bomberSnap.val() : 0;
+  
+  if (bomberCount <= 0) {
+    alert('¡Necesitas un Avión Bombardero! Cómpralo en la tienda global.');
+    state.attacking = false;
+    state.placing = null;
+    await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+    loading(false);
+    return;
+  }
+  
+  // Restar un avión
+  await set(ref(db, `users/${state.user}/inventory/bomberPlanes`), bomberCount - 1);
+  
+  // MARCAR BOMBARDERO COMO ACTIVO
+  state.bomberActive = true;
+  
+  const attackTarget = {row: r, col: c, owner: state.currentVillage.owner, id: state.currentVillage.id};
+  
+  // Crear el avión en la parte inferior de la pantalla
+  const targetCell = $('islandGrid').querySelector(`[data-row="${r}"][data-col="${c}"]`);
+  if (!targetCell) {
+    alert('Error: No se pudo encontrar la celda objetivo');
+    loading(false);
+    return;
+  }
+  
+  const targetRect = targetCell.getBoundingClientRect();
+  const startX = targetRect.left + targetRect.width / 2;
+  const startY = window.innerHeight + 50;
+  
+  const plane = document.createElement('div');
+  plane.style.position = 'fixed';
+  plane.style.fontSize = '50px';
+  plane.style.left = startX - 25 + 'px';
+  plane.style.top = startY + 'px';
+  plane.style.zIndex = '10001';
+  plane.textContent = '✈️';
+  plane.style.filter = 'drop-shadow(0 0 10px rgba(100, 100, 255, 0.8))';
+  document.body.appendChild(plane);
+  
+  // Variables para la animación
+  const planeStartTime = Date.now();
+  const planeDuration = 5000; // 5 segundos para subir
+  const planeStartY = startY;
+  const planeEndY = -100;
+  
+  // Array para guardar las celdas dañadas
+  const damagedCells = [];
+  let bombCount = 0;
+  
+  // Partículas de humo del avión
+  const smokeInterval = setInterval(() => {
+    const elapsed = Date.now() - planeStartTime;
+    const progress = Math.min(elapsed / planeDuration, 1);
+    const currentPlaneY = planeStartY - (progress * (planeStartY - planeEndY));
+    
+    if (progress >= 1) {
+      clearInterval(smokeInterval);
+      return;
+    }
+    
+    for (let i = 0; i < 2; i++) {
+      const smoke = document.createElement('div');
+      smoke.style.position = 'fixed';
+      smoke.style.left = (startX + (Math.random() - 0.5) * 20) + 'px';
+      smoke.style.top = (currentPlaneY + 40) + 'px';
+      smoke.style.width = (10 + Math.random() * 15) + 'px';
+      smoke.style.height = (10 + Math.random() * 15) + 'px';
+      smoke.style.borderRadius = '50%';
+      const opacity = 0.5 + Math.random() * 0.3;
+      const gray = 160 + Math.random() * 95;
+      smoke.style.background = `rgba(${gray}, ${gray}, ${gray}, ${opacity})`;
+      smoke.style.boxShadow = `0 0 10px rgba(255, 255, 255, 0.4)`;
+      smoke.style.zIndex = '9999';
+      smoke.style.pointerEvents = 'none';
+      document.body.appendChild(smoke);
+      
+      const spreadX = (Math.random() - 0.5) * 40;
+      const spreadY = Math.random() * 50 + 40;
+      const duration = 1200 + Math.random() * 600;
+      smoke.style.transition = `all ${duration}ms ease-out`;
+      
+      setTimeout(() => {
+        smoke.style.transform = `translate(${spreadX}px, ${spreadY}px) scale(2)`;
+        smoke.style.opacity = '0';
+      }, 50);
+      
+      setTimeout(() => smoke.remove(), duration + 100);
+    }
+  }, 80);
+  
+  // Soltar bombas cada 0.7 segundos
+  const bombInterval = setInterval(async () => {
+    const elapsed = Date.now() - planeStartTime;
+    const progress = Math.min(elapsed / planeDuration, 1);
+    
+    if (progress >= 1 || bombCount >= 8) {
+      clearInterval(bombInterval);
+      return;
+    }
+    
+    // Posición actual del avión
+    const currentPlaneY = planeStartY - (progress * (planeStartY - planeEndY));
+    
+    // Crear mini cohete/bomba
+    const bomb = document.createElement('div');
+    bomb.style.position = 'fixed';
+    bomb.style.fontSize = '25px';
+    bomb.style.left = (startX - 12) + 'px';
+    bomb.style.top = currentPlaneY + 'px';
+    bomb.style.zIndex = '10000';
+    bomb.textContent = '💣';
+    bomb.style.transition = 'top 0.8s ease-in';
+    document.body.appendChild(bomb);
+    
+    // Calcular celda objetivo (en línea recta hacia arriba desde el punto de click)
+    const bombTargetRow = Math.max(0, r - bombCount);
+    const bombTargetCol = c;
+    bombCount++;
+    
+    const bombTargetCell = $('islandGrid').querySelector(`[data-row="${bombTargetRow}"][data-col="${bombTargetCol}"]`);
+    if (bombTargetCell) {
+      const bombTargetRect = bombTargetCell.getBoundingClientRect();
+      
+      setTimeout(() => {
+        bomb.style.top = (bombTargetRect.top + bombTargetRect.height / 2) + 'px';
+      }, 50);
+      
+      // Explosión después de 800ms
+      setTimeout(() => {
+        bomb.remove();
+        createExplosion(bombTargetRect.left + bombTargetRect.width / 2, bombTargetRect.top + bombTargetRect.height / 2);
+        
+        // Efecto de temblor
+        const viewport = $('islandViewport');
+        viewport.classList.add('shake');
+        setTimeout(() => viewport.classList.remove('shake'), 500);
+        
+        // Daño 3x3
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const nr = bombTargetRow + dx, nc = bombTargetCol + dy;
+            if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
+              const cellKey = `${nr}-${nc}`;
+              if (!damagedCells.includes(cellKey)) {
+                const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+                if (target && !target.classList.contains('gold-mine') && !target.classList.contains('rocket-launcher') &&
+                    !target.classList.contains('deflector-tower') && !target.classList.contains('statue') && 
+                    !target.classList.contains('flower') && !target.classList.contains('damaged')) {
+                  state.buildings.damaged.push({row: nr, col: nc});
+                  target.classList.add('damaged');
+                  damagedCells.push(cellKey);
+                }
+              }
+            }
+          }
+        }
+      }, 800);
+    } else {
+      setTimeout(() => bomb.remove(), 1000);
+    }
+  }, 700);
+  
+  // Animar avión subiendo
+  const animatePlane = () => {
+    const elapsed = Date.now() - planeStartTime;
+    const progress = Math.min(elapsed / planeDuration, 1);
+    const currentY = planeStartY - (progress * (planeStartY - planeEndY));
+    plane.style.top = currentY + 'px';
+    
+    if (progress > 0.8) {
+      plane.style.opacity = (1 - (progress - 0.8) / 0.2).toString();
+    }
+    
+    if (progress < 1) {
+      requestAnimationFrame(animatePlane);
+    } else {
+      plane.remove();
+    }
+  };
+  
+  requestAnimationFrame(animatePlane);
+  
+  // Esperar a que termine la animación
+  await new Promise(resolve => setTimeout(resolve, planeDuration + 1000));
+  
+  // Limpiar intervalos
+  clearInterval(smokeInterval);
+  clearInterval(bombInterval);
+  
+  // DESACTIVAR FLAG DE BOMBARDERO
+  state.bomberActive = false;
+  
+  // Guardar daños
+  await set(ref(db, `users/${attackTarget.owner}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    deflectorTowers: state.buildings.deflectorTowers,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  
+  // Dar XP al atacante
+  const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+  if (attackerLevelSnap.exists()) {
+    let attackerLevel = attackerLevelSnap.val();
+    attackerLevel.xp = (attackerLevel.xp || 0) + 40;
+    
+    while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+      attackerLevel.xp -= attackerLevel.needed;
+      attackerLevel.level++;
+      attackerLevel.needed = attackerLevel.level * 100;
+    }
+    
+    if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+    
+    await set(ref(db, `users/${state.user}/level`), attackerLevel);
+  }
+  
+  state.attacking = false;
+  state.placing = null;
+  await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+  
+  showXPNotification(40, window.innerWidth / 2 - 50, window.innerHeight / 2);
+  loading(false);
 }
 // Función para mostrar notificación de XP estilo COD
 function showXPNotification(xp, x, y, message = '') {
@@ -2533,8 +2884,39 @@ $('buyDeflectorTowerBtn').onclick = async () => {
   state.inventory = currentInventory;
   
   updateUI();
-  hide(modal('globalShop'));
   alert('🛡️ Torre Desviadora comprada! Revisa tu inventario para colocarla.');
+};
+$('buyBomberPlaneBtn').onclick = async () => {
+  // Verificar oro
+  if (state.resources.gold < 2500) return alert(`Necesitas 2500 de oro. Tienes ${state.resources.gold}.`);
+  
+  // Verificar stock global
+  const stockSnap = await get(ref(db, 'globalShop/bomberPlane/stock'));
+  const stock = stockSnap.exists() ? stockSnap.val() : 8;
+  
+  if (stock <= 0) return alert('¡Agotado! No hay más Aviones Bombarderos en stock.');
+  
+  // Usar transacción para reducir stock
+  const stockRef = ref(db, 'globalShop/bomberPlane/stock');
+  const result = await runTransaction(stockRef, (currentStock) => {
+    if (currentStock === null) return 8;
+    if (currentStock <= 0) return;
+    return currentStock - 1;
+  });
+  
+  if (!result.committed) return alert('Error al comprar. Intenta de nuevo.');
+  
+  // Deducir oro
+  state.resources.gold -= 2500;
+  await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+  
+  // Incrementar cantidad de aviones bombarderos
+  const bomberSnap = await get(ref(db, `users/${state.user}/inventory/bomberPlanes`));
+  const bomberCount = bomberSnap.exists() ? bomberSnap.val() : 0;
+  await set(ref(db, `users/${state.user}/inventory/bomberPlanes`), bomberCount + 1);
+  
+  updateUI();
+  alert('✈️ Avión Bombardero comprado! Úsalo desde el menú de ataque.');
 };
 // Función para calcular el precio de la pala según el nivel
 function getShovelPrice(level) {
@@ -2635,7 +3017,6 @@ $('buyStatueBtn').onclick = async () => {
     items.push('statue');
     await set(ref(db, `users/${state.user}/inventory/items`), items);
    
-    hide(modal('globalShop'));
     alert('¡Compra exitosa! La estatua Moai ha sido añadida a tu inventario.');
   } catch(e) {
     alert('Error al comprar: ' + e.message);
@@ -2687,7 +3068,6 @@ $('buyRocketAmmoBtn').onclick = async () => {
     const currentAmmo = (await get(ref(db, `users/${state.user}/inventory/rocketAmmo`))).val() || 0;
     await set(ref(db, `users/${state.user}/inventory/rocketAmmo`), currentAmmo + 1);
    
-    hide(modal('globalShop'));
     alert('¡Compra exitosa! Has comprado 1 cohete.');
   } catch(e) {
     alert('Error al comprar: ' + e.message);
@@ -2740,7 +3120,6 @@ $('buyFlowerBtn').onclick = async () => {
     items.push('flower');
     await set(ref(db, `users/${state.user}/inventory/items`), items);
    
-    hide(modal('globalShop'));
     alert('¡Compra exitosa! La flor decorativa ha sido añadida a tu inventario.');
   } catch(e) {
     alert('Error al comprar: ' + e.message);
@@ -2774,6 +3153,25 @@ document.querySelectorAll('.attack-option').forEach(btn => {
       state.placing = 'rocket_attack';
       loading(false);
       alert('Haz click en una celda para lanzar el cohete (7x7)');
+      return;
+    }
+    
+    if (type === 'bomber') {
+      // Verificar si el usuario tiene aviones bombarderos
+      const bomberSnap = await get(ref(db, `users/${state.user}/inventory/bomberPlanes`));
+      const bomberCount = bomberSnap.exists() ? bomberSnap.val() : 0;
+      
+      if (bomberCount <= 0) {
+        alert('¡Necesitas un Avión Bombardero! Cómpralo en la tienda global.');
+        await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+        loading(false);
+        return;
+      }
+      
+      state.attacking = true;
+      state.placing = 'bomber_attack';
+      loading(false);
+      alert('Haz click en una celda para iniciar el bombardeo en línea recta');
       return;
     }
     
@@ -3217,8 +3615,27 @@ $('dayNightToggle').onclick = () => {
 // Modal Close Buttons
 $('closeShop').onclick = () => hide(modal('shop'));
 $('closeInventory').onclick = () => hide(modal('inventory'));
-$('closeGlobalShop').onclick = () => hide(modal('globalShop'));
+$('closeGlobalShop').onclick = () => {
+  hide(modal('globalShop'));
+  // Pausar música de la tienda
+  const shopMusic = $('shopMusic');
+  shopMusic.pause();
+};
 $('closeTopPlayers').onclick = () => hide(modal('topPlayers'));
+// Sistema de pestañas de la tienda global
+document.querySelectorAll('.shop-tab').forEach(tab => {
+  tab.onclick = () => {
+    const targetTab = tab.dataset.tab;
+    
+    // Remover active de todas las pestañas y categorías
+    document.querySelectorAll('.shop-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.shop-category').forEach(c => c.classList.remove('active'));
+    
+    // Activar pestaña y categoría seleccionada
+    tab.classList.add('active');
+    document.getElementById(`shop-${targetTab}`).classList.add('active');
+  };
+});
 $('closeAchievements').onclick = () => hide(modal('achievements'));
 $('closeVillageOptions').onclick = () => hide(modal('villageOptions'));
 $('viewVillageBtn').onclick = () => {
@@ -3283,19 +3700,33 @@ $('globalShopButton').onclick = async () => {
     await set(ref(db, 'globalShop/deflectorTower'), {stock: 5});
     deflectorTowerSnap = await get(ref(db, 'globalShop/deflectorTower'));
   }
+  
+  let bomberPlaneSnap = await get(ref(db, 'globalShop/bomberPlane'));
+  if (!bomberPlaneSnap.exists()) {
+    await set(ref(db, 'globalShop/bomberPlane'), {stock: 8});
+    bomberPlaneSnap = await get(ref(db, 'globalShop/bomberPlane'));
+  }
  
   const statueStock = statueSnap.val().stock || 0;
   const rocketAmmoStock = rocketAmmoSnap.val().stock || 0;
   const flowerStock = flowerSnap.val().stock || 0;
   const deflectorTowerStock = deflectorTowerSnap.val().stock || 0;
+  const bomberPlaneStock = bomberPlaneSnap.val().stock || 0;
   
   loading(false);
   show(modal('globalShop'));
+  
+  // Reproducir música de la tienda
+  const shopMusic = $('shopMusic');
+  shopMusic.volume = 0.15; // Volumen al 15%
+  shopMusic.currentTime = 0; // Reiniciar desde el inicio
+  shopMusic.play().catch(err => console.log('Error al reproducir música:', err));
  
   $('statueStock').textContent = statueStock;
   $('rocketAmmoStock').textContent = rocketAmmoStock;
   $('deflectorTowerStock').textContent = deflectorTowerStock;
   $('flowerStock').textContent = flowerStock;
+  $('bomberPlaneStock').textContent = bomberPlaneStock;
   $('buyStatueBtn').disabled = statueStock <= 0;
   $('buyStatueBtn').textContent = statueStock <= 0 ? 'Agotado' : 'Comprar';
   $('buyRocketAmmoBtn').disabled = rocketAmmoStock <= 0;
@@ -3304,6 +3735,8 @@ $('globalShopButton').onclick = async () => {
   $('buyFlowerBtn').textContent = flowerStock <= 0 ? 'Agotado' : 'Comprar';
   $('buyDeflectorTowerBtn').disabled = deflectorTowerStock <= 0;
   $('buyDeflectorTowerBtn').textContent = deflectorTowerStock <= 0 ? 'Agotado' : 'Comprar';
+  $('buyBomberPlaneBtn').disabled = bomberPlaneStock <= 0;
+  $('buyBomberPlaneBtn').textContent = bomberPlaneStock <= 0 ? 'Agotado' : 'Comprar';
 };
 // Drag & Zoom
 function setupDrag(viewport, world, view) {
