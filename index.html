@@ -1078,6 +1078,7 @@ body.texture-mode.night-mode .destroyed-castle {
     <h2>Elige Ataque</h2>
     <button class="attack-option" data-attack="rob">Robar Oro (100 oro, roba hasta 50)</button>
     <button class="attack-option" data-attack="bomb">Lanzar Bomba (100 oro, daña área 3x3)</button>
+    <button class="attack-option" data-attack="fireball">🔥 Bolas de Fuego (150 oro, 3 impactos de 30 HP)</button>
     <button class="attack-option" data-attack="rocket">Lanzar Cohete (Requiere munición, daña área 7x7)</button>
     <button class="attack-option" data-attack="superRocket">💥 SUPER COHETE (Requiere munición, daña área 15x15) ⚠️ DAÑA TU ALDEA</button>
     <button class="attack-option" data-attack="bomber">✈️ Avión Bombardero (Requiere avión, bombardeo en línea)</button>
@@ -2109,6 +2110,42 @@ async function handleIslandClick(cell) {
     await repair(r, c, cell, shovelLevel);
   }
   else if (!own && state.placing === 'bomb') await launchBomb(r, c);
+  else if (!own && state.placing === 'fireball_attack') {
+    // Agregar objetivo a la lista
+    state.fireballTargets.push({row: r, col: c});
+    
+    // Marcar visualmente el objetivo con un punto rojo
+    const targetCell = $('islandGrid').querySelector(`[data-row="${r}"][data-col="${c}"]`);
+    if (targetCell) {
+      const marker = document.createElement('div');
+      marker.className = 'fireball-target-marker';
+      marker.style.position = 'absolute';
+      marker.style.top = '50%';
+      marker.style.left = '50%';
+      marker.style.transform = 'translate(-50%, -50%)';
+      marker.style.width = '20px';
+      marker.style.height = '20px';
+      marker.style.borderRadius = '50%';
+      marker.style.background = 'red';
+      marker.style.border = '2px solid white';
+      marker.style.boxShadow = '0 0 10px red';
+      marker.style.zIndex = '100';
+      marker.style.pointerEvents = 'none';
+      marker.textContent = state.fireballTargets.length;
+      marker.style.color = 'white';
+      marker.style.fontSize = '12px';
+      marker.style.fontWeight = 'bold';
+      marker.style.display = 'flex';
+      marker.style.alignItems = 'center';
+      marker.style.justifyContent = 'center';
+      targetCell.appendChild(marker);
+    }
+    
+    if (state.fireballTargets.length >= 3) {
+      // Ya tenemos los 3 objetivos, lanzar ataque
+      await launchFireballAttack(state.fireballTargets);
+    }
+  }
   else if (!own && state.placing === 'rocket_attack') await launchRocketAttack(r, c);
   else if (!own && state.placing === 'super_rocket_attack') await launchSuperRocketAttack(r, c);
   else if (!own && state.placing === 'bomber_attack') await launchBomberAttack(r, c);
@@ -2637,6 +2674,276 @@ async function repair(r, c, cell, shovelLevel = 1) {
   loading(false);
 }
 // Attack Functions
+async function launchFireballAttack(targets) {
+  // Prevenir múltiples clicks
+  if (state.dragLocked) return;
+  
+  loading(true);
+  
+  // Limpiar marcadores rojos
+  const markers = document.querySelectorAll('.fireball-target-marker');
+  markers.forEach(m => m.remove());
+  
+  // Bloquear movimiento del mapa
+  state.dragLocked = true;
+  $('islandViewport').style.cursor = 'default';
+  
+  // Lanzar las 3 bolas de fuego una tras otra
+  for (let i = 0; i < targets.length; i++) {
+    const target = targets[i];
+    const {row, col} = target;
+    
+    // Obtener la celda objetivo
+    const targetCell = $('islandGrid').querySelector(`[data-row="${row}"][data-col="${col}"]`);
+    if (!targetCell) continue;
+    
+    const targetRect = targetCell.getBoundingClientRect();
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+    
+    // Crear bola de fuego desde arriba
+    const fireball = document.createElement('div');
+    fireball.style.position = 'fixed';
+    fireball.style.fontSize = '40px';
+    fireball.style.left = targetCenterX - 20 + 'px';
+    fireball.style.top = '-100px';
+    fireball.style.zIndex = '10001';
+    fireball.textContent = '🔥';
+    fireball.style.transition = 'top 0.5s ease-in';
+    fireball.style.filter = 'drop-shadow(0 0 20px rgba(255, 100, 0, 1))';
+    document.body.appendChild(fireball);
+    
+    // Animar caída
+    setTimeout(() => {
+      fireball.style.top = targetCenterY - 20 + 'px';
+    }, 50);
+    
+    // Esperar a que llegue
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Explosión
+    fireball.remove();
+    
+    // Reproducir sonido de explosión
+    const explosionSound = $('explosionSound');
+    explosionSound.currentTime = 0;
+    explosionSound.volume = 0.3;
+    explosionSound.play().catch(e => console.log('Error reproduciendo sonido:', e));
+    
+    // Efecto de temblor
+    const viewport = $('islandViewport');
+    viewport.classList.add('shake');
+    setTimeout(() => viewport.classList.remove('shake'), 300);
+    
+    // Crear explosión de fuego
+    const explosion = document.createElement('div');
+    explosion.style.position = 'fixed';
+    explosion.style.left = (targetCenterX - 40) + 'px';
+    explosion.style.top = (targetCenterY - 40) + 'px';
+    explosion.style.fontSize = '80px';
+    explosion.style.zIndex = '10002';
+    explosion.textContent = '💥';
+    explosion.style.animation = 'explode 0.8s ease-out forwards';
+    document.body.appendChild(explosion);
+    
+    // Partículas de fuego
+    const colors = ['#ff4500', '#ff6347', '#ff8c00', '#ffa500', '#ffff00'];
+    for (let j = 0; j < 15; j++) {
+      const particle = document.createElement('div');
+      particle.className = 'explosion-particle';
+      particle.style.left = targetCenterX + 'px';
+      particle.style.top = targetCenterY + 'px';
+      particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+      
+      const angle = (Math.PI * 2 * j) / 15;
+      const velocity = 60 + Math.random() * 60;
+      const tx = Math.cos(angle) * velocity;
+      const ty = Math.sin(angle) * velocity;
+      
+      particle.style.animation = `explode 0.8s ease-out forwards`;
+      particle.style.transform = `translate(${tx}px, ${ty}px) scale(${Math.random() * 1.5 + 0.5})`;
+      
+      document.body.appendChild(particle);
+      setTimeout(() => particle.remove(), 800);
+    }
+    
+    setTimeout(() => explosion.remove(), 800);
+    
+    // Aplicar daño (30 HP a castillo o torres, o destruir terreno)
+    let castleHit = false;
+    
+    // Verificar si impactó el castillo
+    if (row === 10 && col === 10) {
+      castleHit = true;
+    }
+    
+    // Verificar si impactó torres
+    const aaTurret = state.buildings.aaTurrets.find(t => t.row === row && t.col === col);
+    const deflector = state.buildings.deflectorTowers.find(dt => dt.row === row && dt.col === col);
+    
+    if (aaTurret) {
+      aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 30;
+      if (aaTurret.health <= 0) {
+        aaTurret.destroyed = true;
+        aaTurret.health = 0;
+      }
+    }
+    
+    if (deflector) {
+      deflector.health = (deflector.health !== undefined ? deflector.health : 150) - 30;
+      if (deflector.health <= 0) {
+        deflector.destroyed = true;
+        deflector.health = 0;
+      }
+    }
+    
+    // Si no impactó estructura, destruir terreno con efecto de fuego
+    if (!castleHit && !aaTurret && !deflector) {
+      const hasMine = state.buildings.mines.some(m => m.row === row && m.col === col);
+      const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === row && rl.col === col);
+      const hasStatue = state.buildings.statues.some(s => s.row === row && s.col === col);
+      const hasFlower = state.buildings.flowers.some(f => f.row === row && f.col === col);
+      const alreadyDamaged = state.buildings.damaged.some(d => d.row === row && d.col === col);
+      
+      if (!hasMine && !hasRocket && !hasStatue && !hasFlower && !alreadyDamaged) {
+        const cell = $('islandGrid').querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        if (cell) {
+          state.buildings.damaged.push({row, col});
+          cell.classList.add('damaged');
+          
+          // Efecto de fuego persistente (como cohete)
+          const fireId = `fireball_${row}_${col}`;
+          if (!state.intervals.particles[fireId]) {
+            state.intervals.particles[fireId] = setInterval(() => {
+              const fire = document.createElement('div');
+              fire.className = 'particula';
+              fire.style.left = (Math.random() * cell.offsetWidth) + 'px';
+              fire.style.top = cell.offsetHeight + 'px';
+              fire.textContent = '🔥';
+              fire.style.fontSize = '16px';
+              fire.style.position = 'absolute';
+              fire.style.zIndex = '5';
+              fire.style.pointerEvents = 'none';
+              cell.appendChild(fire);
+              
+              setTimeout(() => fire.remove(), 1500);
+            }, 150);
+          }
+        }
+      }
+    }
+    
+    // Si impactó el castillo, reducir su salud
+    if (castleHit) {
+      const villageRef = ref(db, `villages/${state.currentVillage.id}`);
+      const villageSnap = await get(villageRef);
+      if (villageSnap.exists()) {
+        const villageData = villageSnap.val();
+        let castleHealth = villageData.castleHealth !== undefined ? villageData.castleHealth : 500;
+        const maxHealth = villageData.castleMaxHealth || 500;
+        castleHealth = Math.max(0, castleHealth - 30);
+        
+        await set(villageRef, {
+          ...villageData,
+          castleHealth: castleHealth
+        });
+        
+        state.currentVillage.castleHealth = castleHealth;
+        
+        const castleCell = $('islandGrid').querySelector(`[data-row="10"][data-col="10"]`);
+        if (castleCell) {
+          const healthPercent = (castleHealth / maxHealth) * 100;
+          
+          if (castleHealth <= 0) {
+            castleCell.textContent = '🕳️';
+            castleCell.classList.remove('my-castle', 'enemy-castle', 'castle-damaged');
+            castleCell.classList.add('destroyed-castle');
+            const healthBar = castleCell.querySelector('.health-bar-container');
+            const healthText = castleCell.querySelector('.health-text');
+            if (healthBar) healthBar.remove();
+            if (healthText) healthText.remove();
+            showXPNotification(0, window.innerWidth / 2 - 100, window.innerHeight / 2, '💥 ¡CASTILLO DESTRUIDO!');
+          } else {
+            if (healthPercent <= 50) {
+              castleCell.classList.add('castle-damaged');
+            } else {
+              castleCell.classList.remove('castle-damaged');
+            }
+            
+            if (!castleCell.querySelector('.health-bar-container')) {
+              const healthBarContainer = document.createElement('div');
+              healthBarContainer.className = 'health-bar-container';
+              healthBarContainer.id = 'castle-health-bar-container';
+              
+              const healthBar = document.createElement('div');
+              healthBar.className = 'health-bar';
+              healthBar.id = 'castle-health-bar';
+              
+              const healthText = document.createElement('div');
+              healthText.className = 'health-text';
+              healthText.id = 'castle-health-text';
+              
+              healthBarContainer.appendChild(healthBar);
+              castleCell.appendChild(healthBarContainer);
+              castleCell.appendChild(healthText);
+            }
+            
+            updateCastleHealthBar();
+            showXPNotification(0, targetCenterX - 50, targetCenterY - 50, `🔥 -30 HP | ${castleHealth}/${maxHealth}`);
+          }
+        }
+      }
+    }
+    
+    // Esperar un poco antes de la siguiente bola de fuego
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  
+  // Guardar cambios en Firebase
+  await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    superRocketLaunchers: state.buildings.superRocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
+    deflectorTowers: state.buildings.deflectorTowers,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  
+  // Actualizar visual de torres
+  updateTowerHealthVisuals();
+  
+  // Dar XP al atacante
+  const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+  if (attackerLevelSnap.exists()) {
+    let attackerLevel = attackerLevelSnap.val();
+    attackerLevel.xp = (attackerLevel.xp || 0) + 40;
+    
+    while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+      attackerLevel.xp -= attackerLevel.needed;
+      attackerLevel.level++;
+      attackerLevel.needed = attackerLevel.level * 100;
+    }
+    
+    if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+    
+    await set(ref(db, `users/${state.user}/level`), attackerLevel);
+  }
+  
+  // Restaurar estado
+  state.attacking = false;
+  state.placing = null;
+  state.fireballTargets = [];
+  state.dragLocked = false;
+  $('islandViewport').style.cursor = 'grab';
+  
+  await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+  
+  loading(false);
+  
+  showXPNotification(40, window.innerWidth / 2 - 50, window.innerHeight / 2, '🔥 +40 XP | Ataque completado');
+}
 async function launchBomb(r, c) {
   // Prevenir múltiples clicks
   if (state.dragLocked) return;
@@ -5937,6 +6244,29 @@ document.querySelectorAll('.attack-option').forEach(btn => {
       state.placing = 'bomber_attack';
       loading(false);
       alert('Haz click en una celda para iniciar el bombardeo en línea recta');
+      return;
+    }
+    
+    if (type === 'fireball') {
+      const fireballCost = 150;
+      const snap = await get(ref(db, `users/${state.user}/resources`));
+      let gold = snap.exists() ? snap.val().gold : 0;
+      
+      if (gold < fireballCost) {
+        alert(`No tienes suficiente oro (necesitas ${fireballCost}).`);
+        await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+        loading(false);
+        return;
+      }
+      
+      gold -= fireballCost;
+      await set(ref(db, `users/${state.user}/resources`), {gold, lastUpdate: Date.now()});
+      
+      state.attacking = true;
+      state.placing = 'fireball_attack';
+      state.fireballTargets = []; // Array para guardar los 3 objetivos
+      loading(false);
+      alert('🔥 Selecciona 3 objetivos para las bolas de fuego (1/3)');
       return;
     }
     
