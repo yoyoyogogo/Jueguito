@@ -64,10 +64,7 @@ body.night-mode .map-view::before { background: rgba(0, 0, 20, 0.6); }
 }
 body.night-mode .grid { background-color: #1a1a2e; }
 .grid.no-grid { gap: 0px; }
-.grid.island {
-  grid-template-columns: repeat(20, 40px);
-  grid-template-rows: repeat(20, 40px);
-}
+/* .grid.island - Grid configurado dinámicamente por JavaScript */
 .cell {
   width: 40px;
   height: 40px;
@@ -106,6 +103,11 @@ body.night-mode .grid { background-color: #1a1a2e; }
   transition: background-color 0.5s ease;
 }
 body.night-mode .grass { background-color: #2d5016; }
+.water {
+  background-color: #4682B4;
+  transition: background-color 0.5s ease;
+}
+body.night-mode .water { background-color: #1e3a5f; }
 
 /* Texturas de pasto */
 body.texture-mode .grass {
@@ -169,6 +171,14 @@ body.night-mode .aa-turret { background-color: #8B0000; }
   0% { transform: scale(0.5); opacity: 1; }
   50% { transform: scale(1.5); opacity: 0.8; }
   100% { transform: scale(2); opacity: 0; }
+}
+/* Flash de explosión */
+.explosion-flash {
+  animation: explosionFlash 0.3s ease-out;
+}
+@keyframes explosionFlash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(255, 100, 0, 0.6); box-shadow: 0 0 20px rgba(255, 100, 0, 0.8); }
 }
 /* Notificación flotante estilo COD */
 .xp-notification {
@@ -1048,6 +1058,15 @@ body.texture-mode.night-mode .destroyed-castle {
         </div>
         <button id="buyBomberPlaneBtn">Comprar</button>
       </div>
+      <div class="shop-item" id="warshipItem">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🚢 Barco de Guerra</div>
+          <div class="shop-item-desc">Se coloca en agua y bombardea la aldea (500 HP, 10 bombas)</div>
+          <div class="shop-item-desc">Stock: <span id="warshipStock">5</span></div>
+          <div class="shop-item-cost">💰 3500 Oro</div>
+        </div>
+        <button id="buyWarshipBtn">Comprar</button>
+      </div>
     </div>
     
     <!-- DEFENSAS -->
@@ -1064,11 +1083,20 @@ body.texture-mode.night-mode .destroyed-castle {
       <div class="shop-item" id="deflectorTowerItem">
         <div class="shop-item-info">
           <div class="shop-item-name">🛡️ Torre Desviadora</div>
-          <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 5 celdas)</div>
+          <div class="shop-item-desc">Desvía cohetes enemigos al mar (rango: 5 celdas, máx. 2 por aldea)</div>
           <div class="shop-item-desc">Stock: <span id="deflectorTowerStock">5</span></div>
           <div class="shop-item-cost">💰 1500 Oro</div>
         </div>
         <button id="buyDeflectorTowerBtn">Comprar</button>
+      </div>
+      <div class="shop-item" id="machineGunItem">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🔫 Ametralladora</div>
+          <div class="shop-item-desc">Defiende contra barcos enemigos (rango: 5 celdas, 500 HP, máx. 3 por aldea)</div>
+          <div class="shop-item-desc">Stock: <span id="machineGunStock">3</span></div>
+          <div class="shop-item-cost">💰 5000 Oro</div>
+        </div>
+        <button id="buyMachineGunBtn">Comprar</button>
       </div>
     </div>
   </div>
@@ -1082,6 +1110,7 @@ body.texture-mode.night-mode .destroyed-castle {
     <button class="attack-option" data-attack="rocket">Lanzar Cohete (Requiere munición, daña área 7x7)</button>
     <button class="attack-option" data-attack="superRocket">💥 SUPER COHETE (Requiere munición, daña área 15x15) ⚠️ DAÑA TU ALDEA</button>
     <button class="attack-option" data-attack="bomber">✈️ Avión Bombardero (Requiere avión, bombardeo en línea)</button>
+    <button class="attack-option" data-attack="warship">🚢 Barco de Guerra (Requiere barco, se coloca en agua y bombardea)</button>
     <button class="modal-close" id="closeAttack">Cancelar</button>
   </div>
 </div>
@@ -1212,7 +1241,7 @@ const state = {
   hasBuilt: false,
   currentVillage: { owner: null, id: null },
   resources: { gold: 0 },
-  buildings: { mines: [], rocketLaunchers: [], superRocketLaunchers: [], statues: [], flowers: [], deflectorTowers: [], aaTurrets: [], damaged: [] },
+  buildings: { mines: [], rocketLaunchers: [], superRocketLaunchers: [], statues: [], flowers: [], deflectorTowers: [], aaTurrets: [], machineGuns: [], damaged: [] },
   level: { level: 1, xp: 0, needed: 100 },
   inventory: [],
   placing: null,
@@ -1599,6 +1628,7 @@ async function startSpectating(village) {
         rocketLaunchers: newBuildings.rocketLaunchers || [],
         superRocketLaunchers: newBuildings.superRocketLaunchers || [],
         deflectorTowers: newBuildings.deflectorTowers || [],
+        machineGuns: newBuildings.machineGuns || [],
         statues: newBuildings.statues || [],
         flowers: newBuildings.flowers || [],
         damaged: newBuildings.damaged || []
@@ -1787,19 +1817,94 @@ async function playSpectatorAttack(attackData) {
     }
   }
 }
+// ========== SISTEMA DE MAPA OPTIMIZADO ==========
+const MAP_CONFIG = {
+  size: 7,            // Tamaño del mapa - CAMBIA ESTE VALOR PARA AJUSTAR EL TAMAÑO (recarga la página después)
+  waterBorder: 3,      // Filas de agua alrededor del mapa (0 = sin agua)
+  cellCache: {}        // Cache de celdas para acceso O(1)
+};
+
+// Función para cambiar el tamaño del mapa dinámicamente
+function setMapSize(newSize) {
+  if (newSize < 1) {
+    console.error('El tamaño del mapa debe ser al menos 1x1');
+    return;
+  }
+  MAP_CONFIG.size = newSize;
+  console.log(`Tamaño del mapa cambiado a ${newSize}x${newSize}`);
+  renderIsland(); // Re-renderizar el mapa
+}
+
+function getMapBounds() {
+  return {
+    minRow: -MAP_CONFIG.waterBorder,
+    maxRow: MAP_CONFIG.size + MAP_CONFIG.waterBorder,
+    minCol: -MAP_CONFIG.waterBorder,
+    maxCol: MAP_CONFIG.size + MAP_CONFIG.waterBorder,
+    landMinRow: 0,
+    landMaxRow: MAP_CONFIG.size,
+    landMinCol: 0,
+    landMaxCol: MAP_CONFIG.size
+  };
+}
+
+function isWaterCell(row, col) {
+  return row < 0 || row >= MAP_CONFIG.size || col < 0 || col >= MAP_CONFIG.size;
+}
+
+function getCastlePosition() {
+  return {
+    row: Math.floor(MAP_CONFIG.size / 2),
+    col: Math.floor(MAP_CONFIG.size / 2)
+  };
+}
+
 function renderIsland() {
   const grid = $('islandGrid');
+  if (!grid) {
+    console.error('No se encontró el elemento islandGrid');
+    return;
+  }
+  
   grid.innerHTML = '';
- 
-  for (let r = 0; r < 20; r++) {
-    for (let c = 0; c < 20; c++) {
-      const cell = document.createElement('div');
-      cell.className = 'cell grass';
-      cell.dataset.row = r;
-      cell.dataset.col = c;
-      cell.onclick = () => handleIslandClick(cell);
-     
-      if (r === 10 && c === 10) {
+  MAP_CONFIG.cellCache = {}; // Limpiar cache
+  
+  const bounds = getMapBounds();
+  const castlePos = getCastlePosition();
+  
+  // Configurar el grid CSS dinámicamente según el tamaño del mapa
+  const totalSize = MAP_CONFIG.size + (MAP_CONFIG.waterBorder * 2);
+  grid.style.gridTemplateColumns = `repeat(${totalSize}, 40px)`;
+  grid.style.gridTemplateRows = `repeat(${totalSize}, 40px)`;
+  
+  console.log(`Mapa configurado: ${totalSize}x${totalSize}, Castillo en (${castlePos.row}, ${castlePos.col})`);
+  
+  // Crear todas las celdas
+  for (let r = bounds.minRow; r < bounds.maxRow; r++) {
+    for (let c = bounds.minCol; c < bounds.maxCol; c++) {
+      const cell = createMapCell(r, c, castlePos);
+      grid.appendChild(cell);
+      MAP_CONFIG.cellCache[`${r},${c}`] = cell;
+    }
+  }
+  
+  console.log(`Total de celdas creadas: ${Object.keys(MAP_CONFIG.cellCache).length}`);
+  
+  // Renderizar todos los edificios
+  renderAllBuildings();
+}
+
+function createMapCell(row, col, castlePos) {
+  const cell = document.createElement('div');
+  const isWater = isWaterCell(row, col);
+  
+  cell.className = isWater ? 'cell water' : 'cell grass';
+  cell.dataset.row = row;
+  cell.dataset.col = col;
+  cell.onclick = () => handleIslandClick(cell);
+  
+  // Renderizar castillo si es la posición central
+  if (row === castlePos.row && col === castlePos.col) {
         cell.classList.add('center');
         cell.classList.remove('grass');
         
@@ -1885,32 +1990,149 @@ function renderIsland() {
             updateCastleHealthBar();
           }
         }
-      }
-     
-      grid.appendChild(cell);
-    }
   }
- 
-  setTimeout(() => {
-    state.buildings.mines.forEach(m => {
-      const c = grid.querySelector(`[data-row="${m.row}"][data-col="${m.col}"]`);
-      if (c) { c.classList.add('gold-mine'); c.textContent = '⛏️'; }
-    });
-    state.buildings.rocketLaunchers.forEach(r => {
-      const c = grid.querySelector(`[data-row="${r.row}"][data-col="${r.col}"]`);
-      if (c) { c.classList.add('rocket-launcher'); c.textContent = '🚀'; }
-    });
-    state.buildings.superRocketLaunchers.forEach(sr => {
-      const c = grid.querySelector(`[data-row="${sr.row}"][data-col="${sr.col}"]`);
-      if (c) { c.classList.add('super-rocket-launcher'); c.textContent = '💥'; }
-    });
-    state.buildings.aaTurrets.forEach(t => {
-      const c = grid.querySelector(`[data-row="${t.row}"][data-col="${t.col}"]`);
+  
+  return cell;
+}
+
+// Función auxiliar para agregar barra de vida permanente (visible siempre)
+function addHealthBarPermanent(cell, health, maxHealth) {
+  const healthBarContainer = document.createElement('div');
+  healthBarContainer.className = 'health-bar-container';
+  
+  const healthBar = document.createElement('div');
+  healthBar.className = 'health-bar';
+  const healthPercent = (health / maxHealth) * 100;
+  healthBar.style.width = healthPercent + '%';
+  
+  if (healthPercent <= 25) {
+    healthBar.classList.add('low');
+  } else if (healthPercent <= 50) {
+    healthBar.classList.add('medium');
+  }
+  
+  const healthText = document.createElement('div');
+  healthText.className = 'health-text';
+  healthText.textContent = `${health}/${maxHealth}`;
+  
+  healthBarContainer.appendChild(healthBar);
+  cell.appendChild(healthBarContainer);
+  cell.appendChild(healthText);
+}
+
+// Función auxiliar para agregar barra de vida con hover (solo para estructuras sin daño)
+function addHealthBarWithHover(cell, health, maxHealth) {
+  const healthBarContainer = document.createElement('div');
+  healthBarContainer.className = 'health-bar-container hover-health';
+  healthBarContainer.style.display = 'none'; // Oculto por defecto
+  
+  const healthBar = document.createElement('div');
+  healthBar.className = 'health-bar';
+  const healthPercent = (health / maxHealth) * 100;
+  healthBar.style.width = healthPercent + '%';
+  
+  if (healthPercent <= 25) {
+    healthBar.classList.add('low');
+  } else if (healthPercent <= 50) {
+    healthBar.classList.add('medium');
+  }
+  
+  const healthText = document.createElement('div');
+  healthText.className = 'health-text';
+  healthText.textContent = `${health}/${maxHealth}`;
+  healthText.style.display = 'none'; // Oculto por defecto
+  
+  healthBarContainer.appendChild(healthBar);
+  cell.appendChild(healthBarContainer);
+  cell.appendChild(healthText);
+  
+  // Eventos de hover
+  cell.addEventListener('mouseenter', () => {
+    healthBarContainer.style.display = 'block';
+    healthText.style.display = 'block';
+  });
+  
+  cell.addEventListener('mouseleave', () => {
+    healthBarContainer.style.display = 'none';
+    healthText.style.display = 'none';
+  });
+}
+
+function renderAllBuildings() {
+  // Renderizar minas
+  state.buildings.mines.forEach(m => {
+    const c = MAP_CONFIG.cellCache[`${m.row},${m.col}`];
+    if (c) { 
+      c.classList.add('gold-mine'); 
+      c.textContent = '⛏️'; 
+    }
+  });
+  
+  // Renderizar lanzacohetes
+  state.buildings.rocketLaunchers.forEach(rl => {
+    const c = MAP_CONFIG.cellCache[`${rl.row},${rl.col}`];
+    if (c) {
+      const health = rl.health !== undefined ? rl.health : 400;
+      const maxHealth = 400;
+      const isDestroyed = rl.destroyed || health <= 0;
+      
+      if (isDestroyed) {
+        // Lanzador destruido
+        c.classList.add('rocket-launcher', 'destroyed-structure');
+        c.textContent = '🔥';
+        c.style.opacity = '0.6';
+      } else {
+        // Lanzador funcional
+        c.classList.add('rocket-launcher');
+        c.textContent = '🚀';
+        
+        // Si ha recibido daño, mostrar barra permanente
+        // Si está en perfecto estado, mostrar barra con hover
+        if (health < maxHealth) {
+          addHealthBarPermanent(c, health, maxHealth);
+        } else {
+          addHealthBarWithHover(c, health, maxHealth);
+        }
+      }
+    }
+  });
+  
+  // Renderizar super lanzacohetes
+  state.buildings.superRocketLaunchers.forEach(srl => {
+    const c = MAP_CONFIG.cellCache[`${srl.row},${srl.col}`];
+    if (c) {
+      const health = srl.health !== undefined ? srl.health : 1500;
+      const maxHealth = 1500;
+      const isDestroyed = srl.destroyed || health <= 0;
+      
+      if (isDestroyed) {
+        // Super lanzador destruido
+        c.classList.add('super-rocket-launcher', 'destroyed-structure');
+        c.textContent = '🔥';
+        c.style.opacity = '0.6';
+      } else {
+        // Super lanzador funcional
+        c.classList.add('super-rocket-launcher');
+        c.textContent = '💥';
+        
+        // Si ha recibido daño, mostrar barra permanente
+        // Si está en perfecto estado, mostrar barra con hover
+        if (health < maxHealth) {
+          addHealthBarPermanent(c, health, maxHealth);
+        } else {
+          addHealthBarWithHover(c, health, maxHealth);
+        }
+      }
+    }
+  });
+  
+  // Renderizar torres anti-aéreas
+  state.buildings.aaTurrets.forEach(t => {
+    const c = MAP_CONFIG.cellCache[`${t.row},${t.col}`];
       if (c) { 
         const health = t.health !== undefined ? t.health : 150;
         const maxHealth = 150;
         const isDestroyed = t.destroyed || health <= 0;
-        const isDamaged = health < maxHealth;
         
         if (isDestroyed) {
           // Torre destruida
@@ -1922,48 +2144,67 @@ function renderIsland() {
           c.classList.add('aa-turret'); 
           c.textContent = '🗼';
           
-          // Solo mostrar barra y números si está dañada
-          if (isDamaged) {
-            const healthBarContainer = document.createElement('div');
-            healthBarContainer.className = 'health-bar-container';
-            
-            const healthBar = document.createElement('div');
-            healthBar.className = 'health-bar';
-            const healthPercent = (health / maxHealth) * 100;
-            healthBar.style.width = healthPercent + '%';
-            
-            if (healthPercent <= 25) {
-              healthBar.classList.add('low');
-            } else if (healthPercent <= 50) {
-              healthBar.classList.add('medium');
-            }
-            
-            const healthText = document.createElement('div');
-            healthText.className = 'health-text';
-            healthText.textContent = `${health}/${maxHealth}`;
-            
-            healthBarContainer.appendChild(healthBar);
-            c.appendChild(healthBarContainer);
-            c.appendChild(healthText);
+          // Si ha recibido daño, mostrar barra permanente
+          // Si está en perfecto estado, mostrar barra con hover
+          if (health < maxHealth) {
+            addHealthBarPermanent(c, health, maxHealth);
+          } else {
+            addHealthBarWithHover(c, health, maxHealth);
           }
         }
       }
     });
-    state.buildings.statues.forEach(s => {
-      const c = grid.querySelector(`[data-row="${s.row}"][data-col="${s.col}"]`);
-      if (c) { c.classList.add('statue'); c.textContent = '🗿'; }
-    });
-    state.buildings.flowers.forEach(f => {
-      const c = grid.querySelector(`[data-row="${f.row}"][data-col="${f.col}"]`);
-      if (c) { c.classList.add('flower'); c.textContent = '🌸'; }
-    });
-    state.buildings.deflectorTowers.forEach(dt => {
-      const c = grid.querySelector(`[data-row="${dt.row}"][data-col="${dt.col}"]`);
+  // Renderizar estatuas
+  state.buildings.statues.forEach(s => {
+    const c = MAP_CONFIG.cellCache[`${s.row},${s.col}`];
+    if (c) { 
+      c.classList.add('statue'); 
+      c.textContent = '🗿'; 
+    }
+  });
+  // Renderizar flores
+  state.buildings.flowers.forEach(f => {
+    const c = MAP_CONFIG.cellCache[`${f.row},${f.col}`];
+    if (c) { 
+      c.classList.add('flower'); 
+      c.textContent = '🌸'; 
+    }
+  });
+  // Renderizar ametralladoras
+  state.buildings.machineGuns.forEach(mg => {
+    const c = MAP_CONFIG.cellCache[`${mg.row},${mg.col}`];
+    if (c) {
+      const health = mg.health !== undefined ? mg.health : 500;
+      const maxHealth = 500;
+      const isDestroyed = mg.destroyed || health <= 0;
+      
+      if (isDestroyed) {
+        // Ametralladora destruida
+        c.classList.add('machine-gun', 'destroyed-structure');
+        c.textContent = '🔥';
+        c.style.opacity = '0.6';
+      } else {
+        // Ametralladora funcional
+        c.classList.add('machine-gun');
+        c.textContent = '🔫';
+        
+        // Si ha recibido daño, mostrar barra permanente
+        // Si está en perfecto estado, mostrar barra con hover
+        if (health < maxHealth) {
+          addHealthBarPermanent(c, health, maxHealth);
+        } else {
+          addHealthBarWithHover(c, health, maxHealth);
+        }
+      }
+    }
+  });
+  // Renderizar torres desviadoras
+  state.buildings.deflectorTowers.forEach(dt => {
+    const c = MAP_CONFIG.cellCache[`${dt.row},${dt.col}`];
       if (c) { 
         const health = dt.health !== undefined ? dt.health : 150;
         const maxHealth = 150;
         const isDestroyed = dt.destroyed || health <= 0;
-        const isDamaged = health < maxHealth;
         
         if (isDestroyed) {
           // Torre destruida
@@ -1975,50 +2216,39 @@ function renderIsland() {
           c.classList.add('deflector-tower'); 
           c.textContent = '🛡️';
           
-          // Solo mostrar barra y números si está dañada
-          if (isDamaged) {
-            const healthBarContainer = document.createElement('div');
-            healthBarContainer.className = 'health-bar-container';
-            
-            const healthBar = document.createElement('div');
-            healthBar.className = 'health-bar';
-            const healthPercent = (health / maxHealth) * 100;
-            healthBar.style.width = healthPercent + '%';
-            
-            if (healthPercent <= 25) {
-              healthBar.classList.add('low');
-            } else if (healthPercent <= 50) {
-              healthBar.classList.add('medium');
-            }
-            
-            const healthText = document.createElement('div');
-            healthText.className = 'health-text';
-            healthText.textContent = `${health}/${maxHealth}`;
-            
-            healthBarContainer.appendChild(healthBar);
-            c.appendChild(healthBarContainer);
-            c.appendChild(healthText);
+          // Si ha recibido daño, mostrar barra permanente
+          // Si está en perfecto estado, mostrar barra con hover
+          if (health < maxHealth) {
+            addHealthBarPermanent(c, health, maxHealth);
+          } else {
+            addHealthBarWithHover(c, health, maxHealth);
           }
         }
       }
     });
-    state.buildings.damaged.forEach(d => {
-      const c = grid.querySelector(`[data-row="${d.row}"][data-col="${d.col}"]`);
-      // Solo agregar 'damaged' si la celda no tiene ninguna estructura
-      if (c && !c.classList.contains('gold-mine') && !c.classList.contains('rocket-launcher') && 
-          !c.classList.contains('aa-turret') && !c.classList.contains('deflector-tower') && 
-          !c.classList.contains('statue') && !c.classList.contains('flower')) {
-        c.classList.add('damaged');
-      }
-    });
-  }, 100);
+  // Los barcos ahora son solo para ataques, no construcciones permanentes
+  // Renderizar áreas dañadas
+  state.buildings.damaged.forEach(d => {
+    const c = MAP_CONFIG.cellCache[`${d.row},${d.col}`];
+    // Solo agregar 'damaged' si la celda no tiene ninguna estructura
+    if (c && !c.classList.contains('gold-mine') && !c.classList.contains('rocket-launcher') && 
+        !c.classList.contains('aa-turret') && !c.classList.contains('deflector-tower') && 
+        !c.classList.contains('statue') && !c.classList.contains('flower')) {
+      c.classList.add('damaged');
+    }
+  });
 }
+
 async function handleIslandClick(cell) {
   if (state.drag.moved) return;
   const r = +cell.dataset.row, c = +cell.dataset.col;
+  
+  // Verificar si es agua usando la función auxiliar
+  const isWater = isWaterCell(r, c);
+  const castlePos = getCastlePosition();
  
-  // Permitir interacción con el castillo para repararlo
-  if (r === 10 && c === 10) {
+  // Permitir interacción con el castillo para repararlo (posición dinámica)
+  if (r === castlePos.row && c === castlePos.col) {
     if (state.currentVillage.owner === state.user) {
       showCastleRepairMenu();
     }
@@ -2027,43 +2257,76 @@ async function handleIslandClick(cell) {
   
   const own = state.currentVillage.owner === state.user;
   
-  // Verificar si es una torre destruida
-  const aaTurret = state.buildings.aaTurrets.find(aa => aa.row === r && aa.col === c);
-  const deflector = state.buildings.deflectorTowers.find(dt => dt.row === r && dt.col === c);
+  // Verificar si es una estructura destruida (solo en tierra)
+  const aaTurret = !isWater ? state.buildings.aaTurrets.find(aa => aa.row === r && aa.col === c) : null;
+  const deflector = !isWater ? state.buildings.deflectorTowers.find(dt => dt.row === r && dt.col === c) : null;
+  const machineGun = !isWater ? state.buildings.machineGuns.find(mg => mg.row === r && mg.col === c) : null;
+  const rocketLauncher = !isWater ? state.buildings.rocketLaunchers.find(rl => rl.row === r && rl.col === c) : null;
+  const superRocketLauncher = !isWater ? state.buildings.superRocketLaunchers.find(srl => srl.row === r && srl.col === c) : null;
+  
   const isTowerDestroyed = (aaTurret && (aaTurret.destroyed || aaTurret.health <= 0)) || 
                            (deflector && (deflector.destroyed || deflector.health <= 0));
+  const isMachineGunDestroyed = machineGun && (machineGun.destroyed || machineGun.health <= 0);
+  const isRocketLauncherDestroyed = rocketLauncher && (rocketLauncher.destroyed || rocketLauncher.health <= 0);
+  const isSuperRocketLauncherDestroyed = superRocketLauncher && (superRocketLauncher.destroyed || superRocketLauncher.health <= 0);
   
-  // Si es una torre destruida, mostrar menú de reparación
-  if (own && !state.placing && isTowerDestroyed && cell.classList.contains('destroyed-structure')) {
-    const repairCost = 1500;
-    const towerType = aaTurret ? '🗼 Torre Anti-Aérea' : '🛡️ Torre Desviadora';
+  // Si es una estructura destruida, mostrar menú de reparación
+  if (own && !state.placing && (isTowerDestroyed || isMachineGunDestroyed || isRocketLauncherDestroyed || isSuperRocketLauncherDestroyed) && cell.classList.contains('destroyed-structure')) {
+    let repairCost, structureType, maxHealth, structure;
+    
+    if (aaTurret) {
+      repairCost = 1500;
+      structureType = '\ud83d\uddfc Torre Anti-A\u00e9rea';
+      maxHealth = 150;
+      structure = aaTurret;
+    } else if (deflector) {
+      repairCost = 1500;
+      structureType = '\ud83d\udee1\ufe0f Torre Desviadora';
+      maxHealth = 150;
+      structure = deflector;
+    } else if (machineGun) {
+      repairCost = 1500;
+      structureType = '\ud83d\udd2b Ametralladora';
+      maxHealth = 500;
+      structure = machineGun;
+    } else if (rocketLauncher) {
+      repairCost = 500;
+      structureType = '\ud83d\ude80 Lanza Cohetes';
+      maxHealth = 400;
+      structure = rocketLauncher;
+    } else if (superRocketLauncher) {
+      repairCost = 2000;
+      structureType = '\ud83d\udca5 Super Lanzador';
+      maxHealth = 1500;
+      structure = superRocketLauncher;
+    }
     
     const confirmRepair = confirm(
-      `🔧 REPARAR TORRE\n\n` +
-      `${towerType}\n` +
-      `Estado: 🔥 Destruida (0/150 HP)\n\n` +
-      `💰 Costo: ${repairCost} oro\n` +
-      `💵 Tu oro: ${state.resources.gold}\n\n` +
-      `¿Deseas reparar esta torre?`
+      `\ud83d\udd27 REPARAR ESTRUCTURA\n\n` +
+      `${structureType}\n` +
+      `Estado: \ud83d\udd25 Destruida (0/${maxHealth} HP)\n\n` +
+      `\ud83d\udcb0 Costo: ${repairCost} oro\n` +
+      `\ud83d\udcb5 Tu oro: ${state.resources.gold}\n\n` +
+      `\u00bfDeseas reparar esta estructura?`
     );
     
     if (confirmRepair) {
       if (state.resources.gold < repairCost) {
-        return alert(`❌ No tienes suficiente oro.\n\n💰 Necesitas: ${repairCost}\n💵 Tienes: ${state.resources.gold}\n🔴 Faltan: ${repairCost - state.resources.gold}`);
+        return alert(`\u274c No tienes suficiente oro.\n\n\ud83d\udcb0 Necesitas: ${repairCost}\n\ud83d\udcb5 Tienes: ${state.resources.gold}\n\ud83d\udd34 Faltan: ${repairCost - state.resources.gold}`);
       }
       
-      // Reparar la torre
-      await repairTower(r, c, aaTurret, deflector, repairCost);
+      // Reparar la estructura
+      await repairStructure(r, c, structure, structureType, maxHealth, repairCost);
     }
     return;
   }
   
   // Si hay una estructura y es mi aldea, preguntar si quiere moverla
-  if (own && !state.placing && (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('super-rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower'))) {
+  if (own && !state.placing && (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('super-rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower') || cell.classList.contains('machine-gun'))) {
     const move = confirm('¿Quieres mover esta estructura a otra ubicación?');
     if (move) {
       // Determinar tipo de estructura
-      let structureType = null;
+      let structureType;
       if (cell.classList.contains('gold-mine')) structureType = 'mine';
       else if (cell.classList.contains('rocket-launcher')) structureType = 'rocketLauncher';
       else if (cell.classList.contains('super-rocket-launcher')) structureType = 'superRocketLauncher';
@@ -2071,6 +2334,7 @@ async function handleIslandClick(cell) {
       else if (cell.classList.contains('statue')) structureType = 'statue';
       else if (cell.classList.contains('flower')) structureType = 'flower';
       else if (cell.classList.contains('deflector-tower')) structureType = 'deflectorTower';
+      else if (cell.classList.contains('machine-gun')) structureType = 'machineGun';
       
       // Guardar info de la estructura a mover
       state.moving = { type: structureType, fromRow: r, fromCol: c };
@@ -2079,7 +2343,9 @@ async function handleIslandClick(cell) {
     return;
   }
   
-  if (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower')) {
+  // Solo bloquear construcción, no ataques
+  const isAttackMode = state.placing && (state.placing === 'bomb' || state.placing === 'fireball_attack' || state.placing === 'rocket_attack' || state.placing === 'super_rocket_attack');
+  if (!isAttackMode && (cell.classList.contains('gold-mine') || cell.classList.contains('rocket-launcher') || cell.classList.contains('aa-turret') || cell.classList.contains('statue') || cell.classList.contains('flower') || cell.classList.contains('deflector-tower'))) {
     return alert('Ya hay una estructura aquí');
   }
   
@@ -2088,21 +2354,35 @@ async function handleIslandClick(cell) {
     if (cell.classList.contains('damaged')) {
       return alert('No puedes mover una estructura a un área dañada.');
     }
+    
+    // Estructuras terrestres NO pueden moverse al agua
+    if (isWater) {
+      return alert('No puedes mover estructuras al agua.');
+    }
+    
     await moveStructure(state.moving.fromRow, state.moving.fromCol, r, c, state.moving.type);
     state.moving = null;
     return;
   }
   
+  // No permitir construcción de edificios normales en agua (pero sí permitir ataques)
+  const isAttack = state.placing && (state.placing === 'bomb' || state.placing === 'fireball_attack' || state.placing === 'rocket_attack' || state.placing === 'super_rocket_attack' || state.placing === 'bomber_attack' || state.placing === 'ballistic_missile_attack' || state.placing === 'warship_attack');
+  if (isWater && state.placing && !isAttack) {
+    return alert('No puedes construir en el agua.');
+  }
+  
+  
   // BUGFIX: No permitir colocar estructuras en bloques destruidos
-  if (cell.classList.contains('damaged') && (state.placing === 'mine' || state.placing === 'rocketLauncher' || state.placing === 'superRocketLauncher' || state.placing === 'aaTurret' || state.placing === 'statue' || state.placing === 'flower' || state.placing === 'deflectorTower')) {
+  if (cell.classList.contains('damaged') && (state.placing === 'mine' || state.placing === 'rocketLauncher' || state.placing === 'superRocketLauncher' || state.placing === 'aaTurret' || state.placing === 'statue' || state.placing === 'flower' || state.placing === 'deflectorTower' || state.placing === 'machineGun')) {
     return alert('No puedes construir en un área dañada. Repárala primero con una pala.');
   }
- 
+
   if (own && state.placing === 'mine') await buildMine(r, c, cell);
   else if (own && state.placing === 'rocketLauncher') await buildRocketLauncher(r, c, cell);
   else if (own && state.placing === 'superRocketLauncher') await buildSuperRocketLauncher(r, c, cell);
   else if (own && state.placing === 'aaTurret') await buildAATurret(r, c, cell);
   else if (own && state.placing === 'deflectorTower') await buildDeflectorTower(r, c, cell);
+  else if (own && state.placing === 'machineGun') await buildMachineGun(r, c, cell);
   else if (own && state.placing === 'statue') await placeStatue(r, c, cell);
   else if (own && state.placing === 'flower') await placeFlower(r, c, cell);
   else if (own && state.placing && state.placing.startsWith('shovel') && cell.classList.contains('damaged')) {
@@ -2111,11 +2391,16 @@ async function handleIslandClick(cell) {
   }
   else if (!own && state.placing === 'bomb') await launchBomb(r, c);
   else if (!own && state.placing === 'fireball_attack') {
+    // Verificar que no se hayan seleccionado ya 3 objetivos
+    if (state.fireballTargets.length >= 3) {
+      return; // Ignorar clicks adicionales
+    }
+    
     // Agregar objetivo a la lista
     state.fireballTargets.push({row: r, col: c});
     
-    // Marcar visualmente el objetivo con un punto rojo
-    const targetCell = $('islandGrid').querySelector(`[data-row="${r}"][data-col="${c}"]`);
+    // Marcar visualmente el objetivo con un punto rojo usando el cache
+    const targetCell = MAP_CONFIG.cellCache[`${r},${c}`];
     if (targetCell) {
       const marker = document.createElement('div');
       marker.className = 'fireball-target-marker';
@@ -2142,16 +2427,28 @@ async function handleIslandClick(cell) {
     }
     
     if (state.fireballTargets.length >= 3) {
-      // Ya tenemos los 3 objetivos, lanzar ataque
-      await launchFireballAttack(state.fireballTargets);
+      // Ya tenemos los 3 objetivos, copiar y resetear inmediatamente
+      const targets = [...state.fireballTargets];
+      state.fireballTargets = []; // Resetear para evitar más clicks
+      state.placing = null; // Desactivar modo de selección
+      
+      // Lanzar ataque con los objetivos copiados
+      await launchFireballAttack(targets);
     }
   }
   else if (!own && state.placing === 'rocket_attack') await launchRocketAttack(r, c);
   else if (!own && state.placing === 'super_rocket_attack') await launchSuperRocketAttack(r, c);
   else if (!own && state.placing === 'bomber_attack') await launchBomberAttack(r, c);
+  else if (!own && state.placing === 'warship_attack') {
+    // Verificar que sea agua
+    if (!isWater) {
+      return alert('🚢 El barco solo puede colocarse en el AGUA.');
+    }
+    await launchWarshipAttack(r, c);
+  }
 }
-// Tower Repair Function
-async function repairTower(r, c, aaTurret, deflector, repairCost) {
+// Structure Repair Function (Torres, Ametralladoras, Lanzadores)
+async function repairStructure(r, c, structure, structureType, maxHealth, repairCost) {
   loading(true);
   
   // Reducir oro
@@ -2161,14 +2458,9 @@ async function repairTower(r, c, aaTurret, deflector, repairCost) {
     lastUpdate: Date.now()
   });
   
-  // Reparar la torre específica
-  if (aaTurret) {
-    aaTurret.health = 150;
-    aaTurret.destroyed = false;
-  } else if (deflector) {
-    deflector.health = 150;
-    deflector.destroyed = false;
-  }
+  // Reparar la estructura
+  structure.health = maxHealth;
+  structure.destroyed = false;
   
   // Guardar en Firebase
   await set(ref(db, `users/${state.currentVillage.owner}/buildings`), {
@@ -2177,42 +2469,35 @@ async function repairTower(r, c, aaTurret, deflector, repairCost) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   
-  // Actualizar visual de la torre específica
+  // Actualizar visual de la estructura
   const cell = $('islandGrid').querySelector(`[data-row="${r}"][data-col="${c}"]`);
   if (cell) {
-    const emoji = aaTurret ? '🗼' : '🛡️';
+    // Determinar emoji según el tipo
+    let emoji = '🗼';
+    if (structureType.includes('Desviadora')) emoji = '🛡️';
+    else if (structureType.includes('Ametralladora')) emoji = '🔫';
+    else if (structureType.includes('Lanza Cohetes')) emoji = '🚀';
+    else if (structureType.includes('Super Lanzador')) emoji = '💥';
+    
     cell.textContent = emoji;
     cell.style.opacity = '1';
     cell.classList.remove('destroyed-structure');
     
-    // Agregar barra de vida
-    const healthBarContainer = document.createElement('div');
-    healthBarContainer.className = 'health-bar-container';
-    
-    const healthBar = document.createElement('div');
-    healthBar.className = 'health-bar';
-    healthBar.style.width = '100%';
-    
-    const healthText = document.createElement('div');
-    healthText.className = 'health-text';
-    healthText.textContent = '150/150';
-    
-    healthBarContainer.appendChild(healthBar);
-    cell.appendChild(healthBarContainer);
-    cell.appendChild(healthText);
+    // Agregar barra de vida con hover
+    addHealthBarWithHover(cell, maxHealth, maxHealth);
   }
   
   updateUI();
   await addXP(25);
   
   loading(false);
-  const towerName = aaTurret ? 'Torre Anti-Aérea' : 'Torre Desviadora';
-  alert(`✅ ¡${towerName} reparada!\n\n💚 HP Restaurado: 150\n❤️ HP Actual: 150/150\n💰 Oro gastado: ${repairCost}\n⭐ +25 XP`);
+  alert(`✅ ¡${structureType} reparada!\n\n💚 HP Restaurado: ${maxHealth}\n❤️ HP Actual: ${maxHealth}/${maxHealth}\n💰 Oro gastado: ${repairCost}\n⭐ +25 XP`);
 }
 // Castle Repair Function
 async function showCastleRepairMenu() {
@@ -2294,6 +2579,9 @@ async function showCastleRepairMenu() {
   }
   updateUI();
   
+  // Renderizar inmediatamente para mostrar la reparación
+  renderIsland();
+  
   await addXP(50);
   
   loading(false);
@@ -2309,6 +2597,7 @@ async function buildMine(r, c, cell) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -2325,19 +2614,24 @@ async function buildMine(r, c, cell) {
 }
 async function buildRocketLauncher(r, c, cell) {
   loading(true);
-  state.buildings.rocketLaunchers.push({row: r, col: c});
+  state.buildings.rocketLaunchers.push({row: r, col: c, health: 400, destroyed: false});
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('rocket-launcher');
   cell.textContent = '🚀';
+  
+  // Agregar barra de vida con hover
+  addHealthBarWithHover(cell, 400, 400);
+  
   await addXP(100);
   state.placing = null;
   updateShop();
@@ -2347,19 +2641,24 @@ async function buildRocketLauncher(r, c, cell) {
 }
 async function buildSuperRocketLauncher(r, c, cell) {
   loading(true);
-  state.buildings.superRocketLaunchers.push({row: r, col: c});
+  state.buildings.superRocketLaunchers.push({row: r, col: c, health: 1500, destroyed: false});
   await set(ref(db, `users/${state.user}/buildings`), {
     goldMines: state.buildings.mines,
     rocketLaunchers: state.buildings.rocketLaunchers,
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('super-rocket-launcher');
   cell.textContent = '💥';
+  
+  // Agregar barra de vida con hover
+  addHealthBarWithHover(cell, 1500, 1500);
+  
   await addXP(200);
   
   // Eliminar del inventario
@@ -2385,18 +2684,50 @@ async function buildAATurret(r, c, cell) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('aa-turret');
   cell.textContent = '🗼';
+  
+  // Agregar barra de vida con hover
+  addHealthBarWithHover(cell, 150, 150);
+  
   await addXP(80);
   state.placing = null;
   updateShop();
   alert('¡Torreta Anti-Aérea construida! +80 XP');
   loading(false);
 }
+// NOTA: Los barcos ahora son solo para ataques, no construcciones permanentes
+// async function buildWarship(r, c, cell) {
+//   loading(true);
+//   state.buildings.warships.push({row: r, col: c, health: 500, destroyed: false});
+//   await set(ref(db, `users/${state.user}/buildings`), {
+//     goldMines: state.buildings.mines,
+//     rocketLaunchers: state.buildings.rocketLaunchers,
+//     superRocketLaunchers: state.buildings.superRocketLaunchers,
+//     aaTurrets: state.buildings.aaTurrets,
+//     deflectorTowers: state.buildings.deflectorTowers,
+//     machineGuns: state.buildings.machineGuns,
+// //     statues: state.buildings.statues,
+//     flowers: state.buildings.flowers,
+//     damaged: state.buildings.damaged
+//   });
+//   cell.classList.add('warship');
+//   cell.textContent = '🚢';
+//   await addXP(100);
+//   state.placing = null;
+//   updateShop();
+//   
+//   // Iniciar disparo automático de bombas
+//   startWarshipBombing();
+//   
+//   alert('¡Barco de Guerra construido! +100 XP\nDispara bombas automáticamente cada 8 segundos.');
+//   loading(false);
+// }
 async function buildDeflectorTower(r, c, cell) {
   loading(true);
   state.buildings.deflectorTowers.push({row: r, col: c, health: 150});
@@ -2406,12 +2737,17 @@ async function buildDeflectorTower(r, c, cell) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
   cell.classList.add('deflector-tower');
   cell.textContent = '🛡️';
+  
+  // Agregar barra de vida con hover
+  addHealthBarWithHover(cell, 150, 150);
+  
   await addXP(75);
   
   // Eliminar del inventario
@@ -2429,6 +2765,43 @@ async function buildDeflectorTower(r, c, cell) {
   alert('¡Torre Desviadora construida! Desvía cohetes enemigos. +75 XP');
   loading(false);
 }
+async function buildMachineGun(r, c, cell) {
+  loading(true);
+  state.buildings.machineGuns.push({row: r, col: c, health: 500});
+  await set(ref(db, `users/${state.user}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    superRocketLaunchers: state.buildings.superRocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
+    deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  cell.classList.add('machine-gun');
+  cell.textContent = '🔫';
+  
+  // Agregar barra de vida con hover
+  addHealthBarWithHover(cell, 500, 500);
+  
+  await addXP(80);
+  
+  // Eliminar del inventario
+  const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
+  const mgIndex = items.indexOf('machineGun');
+  if (mgIndex !== -1) {
+    items.splice(mgIndex, 1);
+    await set(ref(db, `users/${state.user}/inventory/items`), items);
+    state.inventory = items;
+  }
+  
+  state.placing = null;
+  updateShop();
+  if (state.buildings.machineGuns.length === 1) await unlockAchievement('machineGun');
+  alert('¡Ametralladora construida! Defiende contra barcos enemigos. +80 XP');
+  loading(false);
+}
 async function placeStatue(r, c, cell) {
   loading(true);
   state.buildings.statues.push({row: r, col: c});
@@ -2438,6 +2811,7 @@ async function placeStatue(r, c, cell) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -2463,6 +2837,7 @@ async function placeFlower(r, c, cell) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -2508,6 +2883,10 @@ async function moveStructure(fromRow, fromCol, toRow, toCol, type) {
     buildingArray = state.buildings.deflectorTowers;
     className = 'deflector-tower';
     emoji = '🛡️';
+  } else if (type === 'machineGun') {
+    buildingArray = state.buildings.machineGuns;
+    className = 'machine-gun';
+    emoji = '🔫';
   } else if (type === 'statue') {
     buildingArray = state.buildings.statues;
     className = 'statue';
@@ -2537,6 +2916,7 @@ async function moveStructure(fromRow, fromCol, toRow, toCol, type) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -2555,38 +2935,27 @@ async function moveStructure(fromRow, fromCol, toRow, toCol, type) {
   newCell.classList.add(className);
   newCell.textContent = emoji;
   
-  // Si es una torre, agregar barra de vida
-  if (type === 'aaTurret' || type === 'deflectorTower') {
+  // Si es una estructura con vida, agregar barra de vida
+  if (type === 'aaTurret' || type === 'deflectorTower' || type === 'machineGun' || type === 'rocketLauncher' || type === 'superRocketLauncher') {
     const structure = buildingArray[structureIndex];
-    const health = structure.health !== undefined ? structure.health : 150;
-    const maxHealth = 150;
+    let maxHealth = 150;
+    if (type === 'machineGun') maxHealth = 500;
+    if (type === 'rocketLauncher') maxHealth = 400;
+    if (type === 'superRocketLauncher') maxHealth = 1500;
+    
+    const health = structure.health !== undefined ? structure.health : maxHealth;
     const isDestroyed = structure.destroyed || health <= 0;
     
     if (!isDestroyed) {
-      // Agregar barra de vida
-      const healthBarContainer = document.createElement('div');
-      healthBarContainer.className = 'health-bar-container';
-      
-      const healthBar = document.createElement('div');
-      healthBar.className = 'health-bar';
-      const healthPercent = (health / maxHealth) * 100;
-      healthBar.style.width = healthPercent + '%';
-      
-      if (healthPercent <= 25) {
-        healthBar.classList.add('low');
-      } else if (healthPercent <= 50) {
-        healthBar.classList.add('medium');
+      // Si ha recibido daño, mostrar barra permanente
+      // Si está en perfecto estado, mostrar barra con hover
+      if (health < maxHealth) {
+        addHealthBarPermanent(newCell, health, maxHealth);
+      } else {
+        addHealthBarWithHover(newCell, health, maxHealth);
       }
-      
-      const healthText = document.createElement('div');
-      healthText.className = 'health-text';
-      healthText.textContent = `${health}/${maxHealth}`;
-      
-      healthBarContainer.appendChild(healthBar);
-      newCell.appendChild(healthBarContainer);
-      newCell.appendChild(healthText);
     } else {
-      // Torre destruida
+      // Estructura destruida
       newCell.classList.add('destroyed-structure');
       newCell.textContent = '🔥';
       newCell.style.opacity = '0.6';
@@ -2654,6 +3023,7 @@ async function repair(r, c, cell, shovelLevel = 1) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -2777,9 +3147,28 @@ async function launchFireballAttack(targets) {
       castleHit = true;
     }
     
-    // Verificar si impactó torres
+    // Verificar si impactó estructuras
+    const rocketLauncher = state.buildings.rocketLaunchers.find(rl => rl.row === row && rl.col === col);
+    const superRocketLauncher = state.buildings.superRocketLaunchers.find(srl => srl.row === row && srl.col === col);
     const aaTurret = state.buildings.aaTurrets.find(t => t.row === row && t.col === col);
     const deflector = state.buildings.deflectorTowers.find(dt => dt.row === row && dt.col === col);
+    const machineGun = state.buildings.machineGuns.find(mg => mg.row === row && mg.col === col);
+    
+    if (rocketLauncher) {
+      rocketLauncher.health = (rocketLauncher.health !== undefined ? rocketLauncher.health : 400) - 30;
+      if (rocketLauncher.health <= 0) {
+        rocketLauncher.destroyed = true;
+        rocketLauncher.health = 0;
+      }
+    }
+    
+    if (superRocketLauncher) {
+      superRocketLauncher.health = (superRocketLauncher.health !== undefined ? superRocketLauncher.health : 1500) - 30;
+      if (superRocketLauncher.health <= 0) {
+        superRocketLauncher.destroyed = true;
+        superRocketLauncher.health = 0;
+      }
+    }
     
     if (aaTurret) {
       aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 30;
@@ -2797,15 +3186,22 @@ async function launchFireballAttack(targets) {
       }
     }
     
+    if (machineGun) {
+      machineGun.health = (machineGun.health !== undefined ? machineGun.health : 500) - 30;
+      if (machineGun.health <= 0) {
+        machineGun.destroyed = true;
+        machineGun.health = 0;
+      }
+    }
+    
     // Si no impactó estructura, destruir terreno con efecto de fuego
-    if (!castleHit && !aaTurret && !deflector) {
+    if (!castleHit && !rocketLauncher && !superRocketLauncher && !aaTurret && !deflector && !machineGun) {
       const hasMine = state.buildings.mines.some(m => m.row === row && m.col === col);
-      const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === row && rl.col === col);
       const hasStatue = state.buildings.statues.some(s => s.row === row && s.col === col);
       const hasFlower = state.buildings.flowers.some(f => f.row === row && f.col === col);
       const alreadyDamaged = state.buildings.damaged.some(d => d.row === row && d.col === col);
       
-      if (!hasMine && !hasRocket && !hasStatue && !hasFlower && !alreadyDamaged) {
+      if (!hasMine && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(row, col)) {
         const cell = $('islandGrid').querySelector(`[data-row="${row}"][data-col="${col}"]`);
         if (cell) {
           state.buildings.damaged.push({row, col});
@@ -2906,6 +3302,7 @@ async function launchFireballAttack(targets) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -2913,6 +3310,9 @@ async function launchFireballAttack(targets) {
   
   // Actualizar visual de torres
   updateTowerHealthVisuals();
+  
+  // Renderizar inmediatamente para mostrar el daño
+  renderIsland();
   
   // Dar XP al atacante
   const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
@@ -3014,24 +3414,46 @@ async function launchBomb(r, c) {
   for (let dx = -1; dx <= 1; dx++) {
     for (let dy = -1; dy <= 1; dy++) {
       const nr = r + dx, nc = c + dy;
-      if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20) {
+      const castlePos = getCastlePosition();
+      const bounds = getMapBounds();
+      
+      // Permitir daño tanto en tierra como en agua
+      if (nr >= bounds.minRow && nr < bounds.maxRow && nc >= bounds.minCol && nc < bounds.maxCol) {
         // Verificar si impactó el castillo
-        if (nr === 10 && nc === 10) {
+        if (nr === castlePos.row && nc === castlePos.col) {
           castleHit = true;
           continue; // No dañar el castillo directamente, solo reducir su salud
         }
         
         // Verificar si hay alguna estructura en esta posición
         const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
-        const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
+        const rocketLauncher = state.buildings.rocketLaunchers.find(rl => rl.row === nr && rl.col === nc);
+        const superRocketLauncher = state.buildings.superRocketLaunchers.find(srl => srl.row === nr && srl.col === nc);
         const aaTurret = state.buildings.aaTurrets.find(aa => aa.row === nr && aa.col === nc);
         const deflector = state.buildings.deflectorTowers.find(dt => dt.row === nr && dt.col === nc);
+        const machineGun = state.buildings.machineGuns.find(mg => mg.row === nr && mg.col === nc);
         const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
         const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
         const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
         
+        // Dañar Lanza Cohetes
+        if (rocketLauncher) {
+          rocketLauncher.health = (rocketLauncher.health !== undefined ? rocketLauncher.health : 400) - 250;
+          if (rocketLauncher.health <= 0) {
+            rocketLauncher.health = 0;
+            rocketLauncher.destroyed = true;
+          }
+        }
+        // Dañar Super Lanzador
+        else if (superRocketLauncher) {
+          superRocketLauncher.health = (superRocketLauncher.health !== undefined ? superRocketLauncher.health : 1500) - 250;
+          if (superRocketLauncher.health <= 0) {
+            superRocketLauncher.health = 0;
+            superRocketLauncher.destroyed = true;
+          }
+        }
         // Dañar Torre Anti-Aérea
-        if (aaTurret) {
+        else if (aaTurret) {
           aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 250;
           if (aaTurret.health <= 0) {
             aaTurret.health = 0;
@@ -3046,8 +3468,16 @@ async function launchBomb(r, c) {
             deflector.destroyed = true;
           }
         }
-        // Dañar terreno
-        else if (!hasMine && !hasRocket && !hasStatue && !hasFlower && !alreadyDamaged) {
+        // Dañar Ametralladora
+        else if (machineGun) {
+          machineGun.health = (machineGun.health !== undefined ? machineGun.health : 500) - 250;
+          if (machineGun.health <= 0) {
+            machineGun.health = 0;
+            machineGun.destroyed = true;
+          }
+        }
+        // Dañar terreno (solo en tierra, no en agua)
+        else if (!hasMine && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
           const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
           if (target) {
             state.buildings.damaged.push({row: nr, col: nc});
@@ -3131,6 +3561,7 @@ async function launchBomb(r, c) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -3138,6 +3569,9 @@ async function launchBomb(r, c) {
   
   // Actualizar visual de torres (destruidas o dañadas)
   updateTowerHealthVisuals();
+  
+  // Renderizar inmediatamente para mostrar el daño
+  renderIsland();
   
   // Dar XP al atacante (state.user), no al dueño de la aldea
   const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
@@ -3277,9 +3711,9 @@ async function launchRocketAttack(r, c) {
   $('islandGridToggle').style.display = 'none';
 
   // Centrar en el lanza cohetes sin animación
-  const rocketLauncherCell = $('islandGrid').querySelector(`[data-row="${myRocketLauncher.row}"][data-col="${myRocketLauncher.col}"]`);
+  const rocketLauncherCell = MAP_CONFIG.cellCache[`${myRocketLauncher.row},${myRocketLauncher.col}`];
   if (!rocketLauncherCell) {
-    alert('Error: No se pudo encontrar el lanza cohetes');
+    alert('Error: No se pudo encontrar el lanza cohetes en ' + myRocketLauncher.row + ',' + myRocketLauncher.col);
     // RESTAURAR BOTONES DE UI en caso de error
     $('backButton').style.display = 'block';
     $('inventoryButton').style.display = state.user === state.currentVillage.owner ? 'block' : 'none';
@@ -3454,10 +3888,10 @@ async function launchRocketAttack(r, c) {
     targetCol: attackTarget.col 
   }, 800);
  
-  // Calcular la posición exacta de la celda objetivo en pantalla
-  const targetCell = $('islandGrid').querySelector(`[data-row="${attackTarget.row}"][data-col="${attackTarget.col}"]`);
+  // Calcular la posición exacta de la celda objetivo en pantalla usando el cache
+  const targetCell = MAP_CONFIG.cellCache[`${attackTarget.row},${attackTarget.col}`];
   if (!targetCell) {
-    alert('Error: No se pudo encontrar la celda objetivo');
+    alert('Error: No se pudo encontrar la celda objetivo en ' + attackTarget.row + ',' + attackTarget.col);
     // RESTAURAR BOTONES DE UI en caso de error
     $('backButton').style.display = 'block';
     $('inventoryButton').style.display = 'none';
@@ -3492,14 +3926,14 @@ async function launchRocketAttack(r, c) {
 
   // VERIFICAR SI HAY TORRE DESVIADORA
   if (deflectorTower) {
-    // Esperar a que el cohete esté a mitad de camino
-    await new Promise(resolve => setTimeout(resolve, 750));
+    // Esperar a que el cohete esté a mitad de camino (1.5s de animación)
+    await new Promise(resolve => setTimeout(resolve, 1500));
     
     // ALEATORIO: 70% desvío completo, 30% desvío parcial con daño
     const deflectionSuccess = Math.random() < 0.7;
     
     // Activar animación de la torre
-    const towerCell = $('islandGrid').querySelector(`[data-row="${deflectorTower.row}"][data-col="${deflectorTower.col}"]`);
+    const towerCell = MAP_CONFIG.cellCache[`${deflectorTower.row},${deflectorTower.col}`];
     if (towerCell) {
       // Flash intenso de la torre (más débil si falla)
       const intensity = deflectionSuccess ? '0 0 30px #00CED1, 0 0 50px #00CED1, 0 0 70px #00CED1' : '0 0 15px #00CED1, 0 0 25px #00CED1';
@@ -3724,7 +4158,7 @@ async function launchRocketAttack(r, c) {
       const clampedRow = Math.max(0, Math.min(19, offsetRow));
       const clampedCol = Math.max(0, Math.min(19, offsetCol));
       
-      const deflectedCell = $('islandGrid').querySelector(`[data-row="${clampedRow}"][data-col="${clampedCol}"]`);
+      const deflectedCell = MAP_CONFIG.cellCache[`${clampedRow},${clampedCol}`];
       if (deflectedCell) {
         const deflectedRect = deflectedCell.getBoundingClientRect();
         fallingRocket.style.left = (deflectedRect.left + deflectedRect.width / 2 - 20) + 'px';
@@ -3741,7 +4175,7 @@ async function launchRocketAttack(r, c) {
       setTimeout(() => viewport.classList.remove('shake'), 300);
       
       // Explosión en la isla
-      const finalCell = $('islandGrid').querySelector(`[data-row="${clampedRow}"][data-col="${clampedCol}"]`);
+      const finalCell = MAP_CONFIG.cellCache[`${clampedRow},${clampedCol}`];
       if (finalCell) {
         const finalRect = finalCell.getBoundingClientRect();
         const explosionX = finalRect.left + finalRect.width / 2;
@@ -3751,10 +4185,12 @@ async function launchRocketAttack(r, c) {
       
       // Aplicar daño REDUCIDO (3x3 en lugar de 7x7)
       let damagedCells = 0;
+      const castlePos = getCastlePosition();
+      const bounds = getMapBounds();
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
           const nr = clampedRow + dx, nc = clampedCol + dy;
-          if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20 && !(nr === 10 && nc === 10)) {
+          if (nr >= bounds.landMinRow && nr < bounds.landMaxRow && nc >= bounds.landMinCol && nc < bounds.landMaxCol && !(nr === castlePos.row && nc === castlePos.col)) {
             // Verificar si hay alguna estructura en esta posición
             const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
             const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
@@ -3764,8 +4200,8 @@ async function launchRocketAttack(r, c) {
             const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
             const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
             
-            if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
-              const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+            if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
+              const target = MAP_CONFIG.cellCache[`${nr},${nc}`];
               if (target) {
                 state.buildings.damaged.push({row: nr, col: nc});
                 target.classList.add('damaged');
@@ -3782,6 +4218,7 @@ async function launchRocketAttack(r, c) {
         superRocketLaunchers: state.buildings.superRocketLaunchers,
         aaTurrets: state.buildings.aaTurrets,
         deflectorTowers: state.buildings.deflectorTowers,
+        machineGuns: state.buildings.machineGuns,
         statues: state.buildings.statues,
         flowers: state.buildings.flowers,
         damaged: state.buildings.damaged
@@ -3833,7 +4270,8 @@ async function launchRocketAttack(r, c) {
   }
 
   // Paso 6: EXPLOSIÓN con efectos (solo si NO fue desviado)
-  await new Promise(resolve => setTimeout(resolve, 750));
+  // Esperar a que termine la animación del cohete (1.5s)
+  await new Promise(resolve => setTimeout(resolve, 1500));
 
   // GRABAR EXPLOSIÓN
   recordAction('explosion', { 
@@ -3844,7 +4282,7 @@ async function launchRocketAttack(r, c) {
   fallingRocket.remove();
  
   // Obtener posición final para la explosión
-  const finalTargetCell = $('islandGrid').querySelector(`[data-row="${attackTarget.row}"][data-col="${attackTarget.col}"]`);
+  const finalTargetCell = MAP_CONFIG.cellCache[`${attackTarget.row},${attackTarget.col}`];
   const finalTargetRect = finalTargetCell.getBoundingClientRect();
   const explosionX = finalTargetRect.left + finalTargetRect.width / 2;
   const explosionY = finalTargetRect.top + finalTargetRect.height / 2;
@@ -3860,27 +4298,47 @@ async function launchRocketAttack(r, c) {
   // Aplicar daño (7x7)
   let castleHit = false;
   
+  const castlePos = getCastlePosition();
+  const bounds = getMapBounds();
   for (let dx = -3; dx <= 3; dx++) {
     for (let dy = -3; dy <= 3; dy++) {
       const nr = attackTarget.row + dx, nc = attackTarget.col + dy;
-      if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20) {
+      if (nr >= bounds.landMinRow && nr < bounds.landMaxRow && nc >= bounds.landMinCol && nc < bounds.landMaxCol) {
         // Verificar si impactó el castillo
-        if (nr === 10 && nc === 10) {
+        if (nr === castlePos.row && nc === castlePos.col) {
           castleHit = true;
           continue;
         }
         
         // Verificar si hay alguna estructura en esta posición
         const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
-        const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
+        const rocketLauncher = state.buildings.rocketLaunchers.find(rl => rl.row === nr && rl.col === nc);
+        const superRocketLauncher = state.buildings.superRocketLaunchers.find(srl => srl.row === nr && srl.col === nc);
         const aaTurret = state.buildings.aaTurrets.find(aa => aa.row === nr && aa.col === nc);
         const deflector = state.buildings.deflectorTowers.find(dt => dt.row === nr && dt.col === nc);
+        const machineGun = state.buildings.machineGuns.find(mg => mg.row === nr && mg.col === nc);
         const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
         const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
         const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
         
+        // Dañar Lanza Cohetes
+        if (rocketLauncher) {
+          rocketLauncher.health = (rocketLauncher.health !== undefined ? rocketLauncher.health : 400) - 50;
+          if (rocketLauncher.health <= 0) {
+            rocketLauncher.health = 0;
+            rocketLauncher.destroyed = true;
+          }
+        }
+        // Dañar Super Lanzador
+        else if (superRocketLauncher) {
+          superRocketLauncher.health = (superRocketLauncher.health !== undefined ? superRocketLauncher.health : 1500) - 50;
+          if (superRocketLauncher.health <= 0) {
+            superRocketLauncher.health = 0;
+            superRocketLauncher.destroyed = true;
+          }
+        }
         // Dañar Torre Anti-Aérea
-        if (aaTurret) {
+        else if (aaTurret) {
           aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 50;
           if (aaTurret.health <= 0) {
             aaTurret.health = 0;
@@ -3895,8 +4353,16 @@ async function launchRocketAttack(r, c) {
             deflector.destroyed = true;
           }
         }
-        // Dañar terreno
-        else if (!hasMine && !hasRocket && !hasStatue && !hasFlower && !alreadyDamaged) {
+        // Dañar Ametralladora
+        else if (machineGun) {
+          machineGun.health = (machineGun.health !== undefined ? machineGun.health : 500) - 50;
+          if (machineGun.health <= 0) {
+            machineGun.health = 0;
+            machineGun.destroyed = true;
+          }
+        }
+        // Dañar terreno (solo en tierra, no en agua)
+        else if (!hasMine && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
           const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
           if (target) {
             state.buildings.damaged.push({row: nr, col: nc});
@@ -3953,6 +4419,7 @@ async function launchRocketAttack(r, c) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -3960,6 +4427,9 @@ async function launchRocketAttack(r, c) {
   
   // Actualizar visual de torres (destruidas o dañadas)
   updateTowerHealthVisuals();
+  
+  // Renderizar inmediatamente para mostrar el daño
+  renderIsland();
  
   // Dar XP al atacante (state.user), no al dueño de la aldea
   const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
@@ -4234,15 +4704,17 @@ async function launchSuperRocketAttack(r, c) {
   const launcherRow = mySuperRocketLauncher.row;
   const launcherCol = mySuperRocketLauncher.col;
   
+  const castlePosCollateral = getCastlePosition();
+  const boundsCollateral = getMapBounds();
   for (let dx = -2; dx <= 2; dx++) {
     for (let dy = -2; dy <= 2; dy++) {
       const nr = launcherRow + dx;
       const nc = launcherCol + dy;
       
       // No dañar el lanzador mismo ni el castillo
-      if ((dx === 0 && dy === 0) || (nr === 10 && nc === 10)) continue;
+      if ((dx === 0 && dy === 0) || (nr === castlePosCollateral.row && nc === castlePosCollateral.col)) continue;
       
-      if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20) {
+      if (nr >= boundsCollateral.landMinRow && nr < boundsCollateral.landMaxRow && nc >= boundsCollateral.landMinCol && nc < boundsCollateral.landMaxCol) {
         const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
         const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
         const hasSuperRocket = state.buildings.superRocketLaunchers.some(sr => sr.row === nr && sr.col === nc);
@@ -4252,7 +4724,7 @@ async function launchSuperRocketAttack(r, c) {
         const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
         const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
         
-        if (!hasMine && !hasRocket && !hasSuperRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
+        if (!hasMine && !hasRocket && !hasSuperRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
           const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
           if (target) {
             state.buildings.damaged.push({row: nr, col: nc});
@@ -4272,6 +4744,7 @@ async function launchSuperRocketAttack(r, c) {
       superRocketLaunchers: state.buildings.superRocketLaunchers,
       aaTurrets: state.buildings.aaTurrets,
       deflectorTowers: state.buildings.deflectorTowers,
+      machineGuns: state.buildings.machineGuns,
       statues: state.buildings.statues,
       flowers: state.buildings.flowers,
       damaged: state.buildings.damaged
@@ -4308,7 +4781,8 @@ async function launchSuperRocketAttack(r, c) {
   setTimeout(() => $('fade').style.opacity = 0, 100);
 
   // Paso 5: SUPER Cohete cae desde arriba
-  await new Promise(resolve => setTimeout(resolve, 800));
+  // Esperar un poco más para asegurar que el renderizado termine
+  await new Promise(resolve => setTimeout(resolve, 1000));
   
   // GRABAR CAÍDA DEL SUPER COHETE
   recordAction('super_rocket_fall', { 
@@ -4316,10 +4790,11 @@ async function launchSuperRocketAttack(r, c) {
     targetCol: attackTarget.col 
   }, 800);
 
-  // Calcular la posición exacta de la celda objetivo
-  const targetCell = $('islandGrid').querySelector(`[data-row="${attackTarget.row}"][data-col="${attackTarget.col}"]`);
+  // Calcular la posición exacta de la celda objetivo usando el cache
+  const targetCell = MAP_CONFIG.cellCache[`${attackTarget.row},${attackTarget.col}`];
   if (!targetCell) {
-    alert('Error: No se pudo encontrar la celda objetivo');
+    alert(`Error: No se pudo encontrar la celda objetivo en (${attackTarget.row}, ${attackTarget.col})`);
+    console.error('Cache disponible:', Object.keys(MAP_CONFIG.cellCache));
     // RESTAURAR BOTONES DE UI en caso de error
     $('backButton').style.display = 'block';
     $('inventoryButton').style.display = 'none';
@@ -4409,29 +4884,48 @@ async function launchSuperRocketAttack(r, c) {
 
   // Aplicar daño MASIVO (15x15)
   let castleHit = false;
+  const castlePosTarget = getCastlePosition();
+  const boundsTarget = getMapBounds();
   
   for (let dx = -7; dx <= 7; dx++) {
     for (let dy = -7; dy <= 7; dy++) {
       const nr = attackTarget.row + dx;
       const nc = attackTarget.col + dy;
-      if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20) {
+      if (nr >= boundsTarget.landMinRow && nr < boundsTarget.landMaxRow && nc >= boundsTarget.landMinCol && nc < boundsTarget.landMaxCol) {
         // Verificar si impactó el castillo
-        if (nr === 10 && nc === 10) {
+        if (nr === castlePosTarget.row && nc === castlePosTarget.col) {
           castleHit = true;
           continue;
         }
         
         const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
-        const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
-        const hasSuperRocket = state.buildings.superRocketLaunchers.some(sr => sr.row === nr && sr.col === nc);
+        const rocketLauncher = state.buildings.rocketLaunchers.find(rl => rl.row === nr && rl.col === nc);
+        const superRocketLauncher = state.buildings.superRocketLaunchers.find(srl => srl.row === nr && srl.col === nc);
         const aaTurret = state.buildings.aaTurrets.find(aa => aa.row === nr && aa.col === nc);
         const deflector = state.buildings.deflectorTowers.find(dt => dt.row === nr && dt.col === nc);
+        const machineGun = state.buildings.machineGuns.find(mg => mg.row === nr && mg.col === nc);
         const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
         const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
         const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
         
+        // Dañar Lanza Cohetes
+        if (rocketLauncher) {
+          rocketLauncher.health = (rocketLauncher.health !== undefined ? rocketLauncher.health : 400) - 450;
+          if (rocketLauncher.health <= 0) {
+            rocketLauncher.health = 0;
+            rocketLauncher.destroyed = true;
+          }
+        }
+        // Dañar Super Lanzador
+        else if (superRocketLauncher) {
+          superRocketLauncher.health = (superRocketLauncher.health !== undefined ? superRocketLauncher.health : 1500) - 450;
+          if (superRocketLauncher.health <= 0) {
+            superRocketLauncher.health = 0;
+            superRocketLauncher.destroyed = true;
+          }
+        }
         // Dañar Torre Anti-Aérea
-        if (aaTurret) {
+        else if (aaTurret) {
           aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 450;
           if (aaTurret.health <= 0) {
             aaTurret.health = 0;
@@ -4446,8 +4940,16 @@ async function launchSuperRocketAttack(r, c) {
             deflector.destroyed = true;
           }
         }
-        // Dañar terreno
-        else if (!hasMine && !hasRocket && !hasSuperRocket && !hasStatue && !hasFlower && !alreadyDamaged) {
+        // Dañar Ametralladora
+        else if (machineGun) {
+          machineGun.health = (machineGun.health !== undefined ? machineGun.health : 500) - 450;
+          if (machineGun.health <= 0) {
+            machineGun.health = 0;
+            machineGun.destroyed = true;
+          }
+        }
+        // Dañar terreno (solo en tierra, no en agua)
+        else if (!hasMine && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
           const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
           if (target) {
             state.buildings.damaged.push({row: nr, col: nc});
@@ -4520,6 +5022,7 @@ async function launchSuperRocketAttack(r, c) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
@@ -4527,6 +5030,9 @@ async function launchSuperRocketAttack(r, c) {
   
   // Actualizar visual de torres (destruidas o dañadas)
   updateTowerHealthVisuals();
+  
+  // Renderizar inmediatamente para mostrar el daño
+  renderIsland();
 
   // Dar XP masivo al atacante
   const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
@@ -4618,13 +5124,14 @@ async function launchBomberAttack(r, c) {
   const startX = targetRect.left + targetRect.width / 2;
   const startY = window.innerHeight + 50;
   
-  const plane = document.createElement('div');
+  const plane = document.createElement('img');
+  plane.src = 'recursos/avion.png';
   plane.style.position = 'fixed';
-  plane.style.fontSize = '50px';
-  plane.style.left = startX - 25 + 'px';
-  plane.style.top = startY + 'px';
+  plane.style.width = '80px';
+  plane.style.height = '80px';
+  plane.style.left = startX - 40 + 'px';
+  plane.style.top = startY - 40 + 'px';
   plane.style.zIndex = '10001';
-  plane.textContent = '✈️';
   plane.style.filter = 'drop-shadow(0 0 10px rgba(100, 100, 255, 0.8))';
   document.body.appendChild(plane);
   
@@ -4857,13 +5364,15 @@ async function launchBomberAttack(r, c) {
         
         // Daño 3x3
         let castleHitThisBomb = false;
+        const castlePosLocal = getCastlePosition();
+        const boundsLocal = getMapBounds();
         
         for (let dx = -1; dx <= 1; dx++) {
           for (let dy = -1; dy <= 1; dy++) {
             const nr = bombTargetRow + dx, nc = bombTargetCol + dy;
-            if (nr >= 0 && nr < 20 && nc >= 0 && nc < 20) {
+            if (nr >= boundsLocal.landMinRow && nr < boundsLocal.landMaxRow && nc >= boundsLocal.landMinCol && nc < boundsLocal.landMaxCol) {
               // Verificar si impactó el castillo
-              if (nr === 10 && nc === 10) {
+              if (nr === castlePosLocal.row && nc === castlePosLocal.col) {
                 castleHitThisBomb = true;
                 continue;
               }
@@ -4872,14 +5381,62 @@ async function launchBomberAttack(r, c) {
               if (!damagedCells.includes(cellKey)) {
                 // Verificar si hay alguna estructura en esta posición
                 const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
-                const hasRocket = state.buildings.rocketLaunchers.some(rl => rl.row === nr && rl.col === nc);
-                const hasAATurret = state.buildings.aaTurrets.some(aa => aa.row === nr && aa.col === nc);
-                const hasDeflector = state.buildings.deflectorTowers.some(dt => dt.row === nr && dt.col === nc);
+                const rocketLauncher = state.buildings.rocketLaunchers.find(rl => rl.row === nr && rl.col === nc);
+                const superRocketLauncher = state.buildings.superRocketLaunchers.find(srl => srl.row === nr && srl.col === nc);
+                const aaTurret = state.buildings.aaTurrets.find(aa => aa.row === nr && aa.col === nc);
+                const deflector = state.buildings.deflectorTowers.find(dt => dt.row === nr && dt.col === nc);
+                const machineGun = state.buildings.machineGuns.find(mg => mg.row === nr && mg.col === nc);
                 const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
                 const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
                 const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
                 
-                if (!hasMine && !hasRocket && !hasAATurret && !hasDeflector && !hasStatue && !hasFlower && !alreadyDamaged) {
+                // Dañar Lanza Cohetes
+                if (rocketLauncher) {
+                  rocketLauncher.health = (rocketLauncher.health !== undefined ? rocketLauncher.health : 400) - 40;
+                  if (rocketLauncher.health <= 0) {
+                    rocketLauncher.health = 0;
+                    rocketLauncher.destroyed = true;
+                  }
+                  damagedCells.push(cellKey);
+                }
+                // Dañar Super Lanzador
+                else if (superRocketLauncher) {
+                  superRocketLauncher.health = (superRocketLauncher.health !== undefined ? superRocketLauncher.health : 1500) - 40;
+                  if (superRocketLauncher.health <= 0) {
+                    superRocketLauncher.health = 0;
+                    superRocketLauncher.destroyed = true;
+                  }
+                  damagedCells.push(cellKey);
+                }
+                // Dañar Torre Anti-Aérea
+                else if (aaTurret) {
+                  aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 40;
+                  if (aaTurret.health <= 0) {
+                    aaTurret.health = 0;
+                    aaTurret.destroyed = true;
+                  }
+                  damagedCells.push(cellKey);
+                }
+                // Dañar Torre Desviadora
+                else if (deflector) {
+                  deflector.health = (deflector.health !== undefined ? deflector.health : 150) - 40;
+                  if (deflector.health <= 0) {
+                    deflector.health = 0;
+                    deflector.destroyed = true;
+                  }
+                  damagedCells.push(cellKey);
+                }
+                // Dañar Ametralladora
+                else if (machineGun) {
+                  machineGun.health = (machineGun.health !== undefined ? machineGun.health : 500) - 40;
+                  if (machineGun.health <= 0) {
+                    machineGun.health = 0;
+                    machineGun.destroyed = true;
+                  }
+                  damagedCells.push(cellKey);
+                }
+                // Dañar terreno
+                else if (!hasMine && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
                   const target = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
                   if (target) {
                     state.buildings.damaged.push({row: nr, col: nc});
@@ -4979,10 +5536,14 @@ async function launchBomberAttack(r, c) {
     superRocketLaunchers: state.buildings.superRocketLaunchers,
     aaTurrets: state.buildings.aaTurrets,
     deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
     statues: state.buildings.statues,
     flowers: state.buildings.flowers,
     damaged: state.buildings.damaged
   });
+  
+  // Renderizar inmediatamente para mostrar el daño
+  renderIsland();
   
   // Dar XP al atacante
   const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
@@ -5010,7 +5571,489 @@ async function launchBomberAttack(r, c) {
   showXPNotification(40, window.innerWidth / 2 - 50, window.innerHeight / 2);
   loading(false);
 }
-// Función para mostrar notificación de XP estilo COD
+async function launchWarshipAttack(r, c) {
+  // Prevenir múltiples clicks
+  if (state.dragLocked) return;
+  
+  // Bloquear movimiento del mapa y más clicks
+  state.dragLocked = true;
+  $('islandViewport').style.cursor = 'default';
+  
+  // Verificar si el usuario tiene barcos de guerra
+  const warshipSnap = await get(ref(db, `users/${state.user}/inventory/warships`));
+  const warshipCount = warshipSnap.exists() ? warshipSnap.val() : 0;
+  
+  if (warshipCount <= 0) {
+    alert('¡Necesitas un Barco de Guerra! Cómpralo en la tienda global.');
+    state.attacking = false;
+    state.placing = null;
+    state.dragLocked = false;
+    $('islandViewport').style.cursor = 'grab';
+    await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+    loading(false);
+    return;
+  }
+  
+  // Restar un barco
+  await set(ref(db, `users/${state.user}/inventory/warships`), warshipCount - 1);
+  
+  const attackTarget = {row: r, col: c, owner: state.currentVillage.owner, id: state.currentVillage.id};
+  
+  // Crear el barco en la posición de agua seleccionada
+  const targetCell = $('islandGrid').querySelector(`[data-row="${r}"][data-col="${c}"]`);
+  if (!targetCell) {
+    alert('Error: No se pudo encontrar la celda objetivo');
+    loading(false);
+    return;
+  }
+  
+  const targetRect = targetCell.getBoundingClientRect();
+  const shipX = targetRect.left + targetRect.width / 2;
+  const shipY = targetRect.top + targetRect.height / 2;
+  
+  // Crear el barco directamente en la celda (como una estructura)
+  const ship = document.createElement('div');
+  ship.style.position = 'absolute';
+  ship.style.width = '100%';
+  ship.style.height = '100%';
+  ship.style.display = 'flex';
+  ship.style.alignItems = 'center';
+  ship.style.justifyContent = 'center';
+  ship.style.fontSize = '28px';
+  ship.style.top = '0';
+  ship.style.left = '0';
+  ship.style.zIndex = '100';
+  ship.textContent = '🚢';
+  ship.style.filter = 'drop-shadow(0 0 10px rgba(50, 50, 200, 0.8))';
+  ship.style.pointerEvents = 'auto';
+  ship.className = 'warship-attack';
+  targetCell.appendChild(ship);
+  
+  // Vida del barco
+  let shipHealth = 500;
+  let shipDestroyed = false;
+  
+  // Crear barra de vida del barco (oculta por defecto, visible al pasar el cursor)
+  const healthBar = document.createElement('div');
+  healthBar.className = 'health-bar-container hover-health';
+  healthBar.style.display = 'none'; // Oculto por defecto
+  targetCell.appendChild(healthBar);
+  
+  const healthFill = document.createElement('div');
+  healthFill.className = 'health-bar';
+  healthFill.style.width = '100%';
+  healthBar.appendChild(healthFill);
+  
+  // Texto de vida (oculto por defecto)
+  const healthText = document.createElement('div');
+  healthText.className = 'health-text';
+  healthText.style.display = 'none'; // Oculto por defecto
+  healthText.textContent = `${shipHealth}/500`;
+  targetCell.appendChild(healthText);
+  
+  // Eventos de hover para mostrar/ocultar vida
+  ship.addEventListener('mouseenter', () => {
+    healthBar.style.display = 'block';
+    healthText.style.display = 'block';
+  });
+  
+  ship.addEventListener('mouseleave', () => {
+    healthBar.style.display = 'none';
+    healthText.style.display = 'none';
+  });
+  
+  // Verificar si hay ametralladoras que puedan atacar al barco
+  const machineGuns = state.buildings.machineGuns || [];
+  let shipAttackInterval = null; // Declarar aquí para poder limpiarlo después
+  
+  if (machineGuns.length > 0) {
+    const attackInterval = setInterval(() => {
+      if (shipDestroyed) {
+        clearInterval(attackInterval);
+        return;
+      }
+      
+      // Cada ametralladora dispara
+      for (const mg of machineGuns) {
+        if (shipDestroyed) break;
+        
+        // Verificar que la ametralladora NO esté destruida
+        const isDestroyed = mg.destroyed || (mg.health !== undefined && mg.health <= 0);
+        if (isDestroyed) continue;
+        
+        // Verificar rango (5 celdas)
+        const distance = Math.sqrt(Math.pow(mg.row - r, 2) + Math.pow(mg.col - c, 2));
+        if (distance > 5) continue;
+        
+        // Daño por disparo
+        shipHealth -= 20;
+        
+        // Actualizar barra de vida
+        const healthPercent = Math.max(0, (shipHealth / 500) * 100);
+        healthFill.style.width = healthPercent + '%';
+        healthText.textContent = `${Math.max(0, shipHealth)}/500`;
+        
+        if (healthPercent <= 50) {
+          healthFill.style.background = 'linear-gradient(90deg, #FFA726, #FFB74D)';
+        }
+        if (healthPercent <= 25) {
+          healthFill.style.background = 'linear-gradient(90deg, #EF5350, #E57373)';
+        }
+        
+        // Efecto visual de disparo
+        const mgCell = $('islandGrid').querySelector(`[data-row="${mg.row}"][data-col="${mg.col}"]`);
+        if (mgCell) {
+          const mgRect = mgCell.getBoundingClientRect();
+          
+          // Brillo en la ametralladora
+          mgCell.style.boxShadow = '0 0 30px #FFD700, 0 0 50px #FFA500';
+          setTimeout(() => mgCell.style.boxShadow = '', 500);
+          
+          // Crear proyectil
+          const bullet = document.createElement('div');
+          bullet.style.position = 'fixed';
+          bullet.style.fontSize = '12px';
+          bullet.style.left = (mgRect.left + mgRect.width / 2) + 'px';
+          bullet.style.top = (mgRect.top + mgRect.height / 2) + 'px';
+          bullet.style.zIndex = '10002';
+          bullet.textContent = '💥';
+          bullet.style.transition = 'all 0.3s linear';
+          document.body.appendChild(bullet);
+          
+          setTimeout(() => {
+            const currentShipRect = targetCell.getBoundingClientRect();
+            bullet.style.left = (currentShipRect.left + currentShipRect.width / 2) + 'px';
+            bullet.style.top = (currentShipRect.top + currentShipRect.height / 2) + 'px';
+          }, 50);
+          
+          setTimeout(() => bullet.remove(), 350);
+        }
+        
+        // Si el barco es destruido
+        if (shipHealth <= 0 && !shipDestroyed) {
+          shipDestroyed = true;
+          clearInterval(attackInterval);
+          if (shipAttackInterval) clearInterval(shipAttackInterval);
+          
+          // Explosión del barco
+          const finalShipRect = targetCell.getBoundingClientRect();
+          createExplosion(finalShipRect.left + finalShipRect.width / 2, finalShipRect.top + finalShipRect.height / 2);
+          ship.remove();
+          healthBar.remove();
+          healthText.remove();
+          
+          showXPNotification(0, window.innerWidth / 2 - 100, window.innerHeight / 2, '🔫 BARCO DESTRUIDO!');
+          
+          state.attacking = false;
+          state.placing = null;
+          state.dragLocked = false;
+          $('islandViewport').style.cursor = 'grab';
+          loading(false);
+          return;
+        }
+        
+        break; // Solo una ametralladora dispara por turno
+      }
+    }, 800);
+    
+    // Limpiar intervalo después de 10 segundos
+    setTimeout(() => clearInterval(attackInterval), 10000);
+  }
+  
+  // El barco ataca a las ametralladoras cercanas (rango 5 celdas)
+  shipAttackInterval = setInterval(() => {
+    if (shipDestroyed) {
+      clearInterval(shipAttackInterval);
+      return;
+    }
+    
+    // Buscar ametralladoras en rango
+    for (const mg of machineGuns) {
+      const isDestroyed = mg.destroyed || (mg.health !== undefined && mg.health <= 0);
+      if (isDestroyed) continue;
+      
+      // Verificar rango (5 celdas)
+      const distance = Math.sqrt(Math.pow(mg.row - r, 2) + Math.pow(mg.col - c, 2));
+      if (distance > 5) continue;
+      
+      // El barco dispara a la ametralladora
+      const mgCell = $('islandGrid').querySelector(`[data-row="${mg.row}"][data-col="${mg.col}"]`);
+      if (mgCell) {
+        const shipRect = targetCell.getBoundingClientRect();
+        const mgRect = mgCell.getBoundingClientRect();
+        
+        // Crear proyectil del barco
+        const shipBullet = document.createElement('div');
+        shipBullet.style.position = 'fixed';
+        shipBullet.style.fontSize = '20px';
+        shipBullet.style.left = (shipRect.left + shipRect.width / 2) + 'px';
+        shipBullet.style.top = (shipRect.top + shipRect.height / 2) + 'px';
+        shipBullet.style.zIndex = '10002';
+        shipBullet.textContent = '💣';
+        shipBullet.style.transition = 'all 0.5s linear';
+        document.body.appendChild(shipBullet);
+        
+        setTimeout(() => {
+          shipBullet.style.left = (mgRect.left + mgRect.width / 2) + 'px';
+          shipBullet.style.top = (mgRect.top + mgRect.height / 2) + 'px';
+        }, 50);
+        
+        setTimeout(async () => {
+          shipBullet.remove();
+          
+          // Explosión en la ametralladora
+          createExplosion(mgRect.left + mgRect.width / 2, mgRect.top + mgRect.height / 2);
+          
+          // Daño a la ametralladora
+          mg.health = (mg.health || 500) - 50;
+          
+          // Actualizar visualmente
+          const existingHealthBar = mgCell.querySelector('.health-bar');
+          if (existingHealthBar) {
+            const healthPercent = Math.max(0, (mg.health / 500) * 100);
+            existingHealthBar.style.width = healthPercent + '%';
+            if (healthPercent <= 50) {
+              existingHealthBar.style.background = 'linear-gradient(90deg, #FFA726, #FFB74D)';
+            }
+            if (healthPercent <= 25) {
+              existingHealthBar.style.background = 'linear-gradient(90deg, #EF5350, #E57373)';
+            }
+          }
+          
+          if (mg.health <= 0) {
+            mg.destroyed = true;
+            mgCell.classList.add('destroyed-structure');
+            mgCell.style.opacity = '0.6';
+            mgCell.textContent = '🔥';
+          }
+          
+          // Guardar daño en Firebase
+          await set(ref(db, `villages/${attackTarget.id}/buildings/machineGuns`), state.buildings.machineGuns);
+        }, 500);
+      }
+      
+      break; // Solo ataca una ametralladora por turno
+    }
+  }, 1500); // Ataca cada 1.5 segundos
+  
+  // Limpiar intervalo de ataque del barco
+  setTimeout(() => clearInterval(shipAttackInterval), 12000);
+  
+  // El barco lanza 10 bombas a la aldea
+  let bombCount = 0;
+  const maxBombs = 10;
+  const damagedCells = [];
+  let castleHit = false;
+  
+  const bombInterval = setInterval(async () => {
+    if (shipDestroyed || bombCount >= maxBombs) {
+      clearInterval(bombInterval);
+      
+      if (!shipDestroyed) {
+        // Barco se retira
+        ship.style.transition = 'all 2s ease-out';
+        ship.style.opacity = '0';
+        ship.style.transform = 'translateY(200px)';
+        healthBar.style.opacity = '0';
+        
+        setTimeout(() => {
+          ship.remove();
+          healthBar.remove();
+        }, 2000);
+        
+        // Guardar daños
+        await set(ref(db, `villages/${attackTarget.id}/buildings`), {
+          mines: state.buildings.mines,
+          rocketLaunchers: state.buildings.rocketLaunchers,
+          superRocketLaunchers: state.buildings.superRocketLaunchers,
+          aaTurrets: state.buildings.aaTurrets,
+          deflectorTowers: state.buildings.deflectorTowers,
+          machineGuns: state.buildings.machineGuns,
+          statues: state.buildings.statues,
+          flowers: state.buildings.flowers,
+          damaged: state.buildings.damaged
+        });
+        
+        // Renderizar inmediatamente para mostrar el daño
+        renderIsland();
+        
+        // Dar XP
+        const attackerLevelSnap = await get(ref(db, `users/${state.user}/level`));
+        if (attackerLevelSnap.exists()) {
+          let attackerLevel = attackerLevelSnap.val();
+          attackerLevel.xp = (attackerLevel.xp || 0) + 50;
+          
+          while (attackerLevel.xp >= attackerLevel.needed && attackerLevel.level < 20) {
+            attackerLevel.xp -= attackerLevel.needed;
+            attackerLevel.level++;
+            attackerLevel.needed = attackerLevel.level * 100;
+          }
+          
+          if (attackerLevel.level >= 20) attackerLevel.xp = Math.min(attackerLevel.xp, attackerLevel.needed - 1);
+          
+          await set(ref(db, `users/${state.user}/level`), attackerLevel);
+        }
+        
+        state.attacking = false;
+        state.placing = null;
+        state.dragLocked = false;
+        $('islandViewport').style.cursor = 'grab';
+        await set(ref(db, `villages/${attackTarget.id}/underAttack`), false);
+        
+        showXPNotification(50, window.innerWidth / 2 - 50, window.innerHeight / 2, '🚢 +50 XP | Bombardeo completado');
+        loading(false);
+      }
+      return;
+    }
+    
+    bombCount++;
+    
+    // Seleccionar objetivo aleatorio en la aldea
+    const bounds = getMapBounds();
+    const targetRow = bounds.landMinRow + Math.floor(Math.random() * (bounds.landMaxRow - bounds.landMinRow));
+    const targetCol = bounds.landMinCol + Math.floor(Math.random() * (bounds.landMaxCol - bounds.landMinCol));
+    
+    const bombTargetCell = $('islandGrid').querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
+    if (!bombTargetCell) return;
+    
+    const bombTargetRect = bombTargetCell.getBoundingClientRect();
+    
+    // Crear bomba desde el barco
+    const shipRect = targetCell.getBoundingClientRect();
+    const bomb = document.createElement('div');
+    bomb.style.position = 'fixed';
+    bomb.style.fontSize = '25px';
+    bomb.style.left = (shipRect.left + shipRect.width / 2) + 'px';
+    bomb.style.top = (shipRect.top + shipRect.height / 2) + 'px';
+    bomb.style.zIndex = '10000';
+    bomb.textContent = '💣';
+    bomb.style.transition = 'all 1s ease-in';
+    document.body.appendChild(bomb);
+    
+    setTimeout(() => {
+      bomb.style.left = (bombTargetRect.left + bombTargetRect.width / 2) + 'px';
+      bomb.style.top = (bombTargetRect.top + bombTargetRect.height / 2) + 'px';
+    }, 50);
+    
+    // Explosión después de 1 segundo
+    setTimeout(async () => {
+      bomb.remove();
+      createExplosion(bombTargetRect.left + bombTargetRect.width / 2, bombTargetRect.top + bombTargetRect.height / 2);
+      
+      // Temblor
+      const viewport = $('islandViewport');
+      viewport.classList.add('shake');
+      setTimeout(() => viewport.classList.remove('shake'), 500);
+      
+      // Daño 3x3
+      const castlePos = getCastlePosition();
+      
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const nr = targetRow + dx, nc = targetCol + dy;
+          if (nr >= bounds.landMinRow && nr < bounds.landMaxRow && nc >= bounds.landMinCol && nc < bounds.landMaxCol) {
+            // Verificar si impactó el castillo
+            if (nr === castlePos.row && nc === castlePos.col) {
+              castleHit = true;
+              continue;
+            }
+            
+            const cellKey = `${nr}-${nc}`;
+            if (!damagedCells.includes(cellKey)) {
+              // Verificar estructuras
+              const hasMine = state.buildings.mines.some(m => m.row === nr && m.col === nc);
+              const rocketLauncher = state.buildings.rocketLaunchers.find(rl => rl.row === nr && rl.col === nc);
+              const superRocketLauncher = state.buildings.superRocketLaunchers.find(srl => srl.row === nr && srl.col === nc);
+              const aaTurret = state.buildings.aaTurrets.find(aa => aa.row === nr && aa.col === nc);
+              const deflector = state.buildings.deflectorTowers.find(dt => dt.row === nr && dt.col === nc);
+              const machineGun = state.buildings.machineGuns.find(mg => mg.row === nr && mg.col === nc);
+              const hasStatue = state.buildings.statues.some(s => s.row === nr && s.col === nc);
+              const hasFlower = state.buildings.flowers.some(f => f.row === nr && f.col === nc);
+              const alreadyDamaged = state.buildings.damaged.some(d => d.row === nr && d.col === nc);
+              
+              // Dañar Lanza Cohetes
+              if (rocketLauncher) {
+                rocketLauncher.health = (rocketLauncher.health !== undefined ? rocketLauncher.health : 400) - 30;
+                if (rocketLauncher.health <= 0) {
+                  rocketLauncher.health = 0;
+                  rocketLauncher.destroyed = true;
+                }
+                damagedCells.push(cellKey);
+              }
+              // Dañar Super Lanzador
+              else if (superRocketLauncher) {
+                superRocketLauncher.health = (superRocketLauncher.health !== undefined ? superRocketLauncher.health : 1500) - 30;
+                if (superRocketLauncher.health <= 0) {
+                  superRocketLauncher.health = 0;
+                  superRocketLauncher.destroyed = true;
+                }
+                damagedCells.push(cellKey);
+              }
+              // Dañar Torre Anti-Aérea
+              else if (aaTurret) {
+                aaTurret.health = (aaTurret.health !== undefined ? aaTurret.health : 150) - 30;
+                if (aaTurret.health <= 0) {
+                  aaTurret.health = 0;
+                  aaTurret.destroyed = true;
+                }
+                damagedCells.push(cellKey);
+              }
+              // Dañar Torre Desviadora
+              else if (deflector) {
+                deflector.health = (deflector.health !== undefined ? deflector.health : 150) - 30;
+                if (deflector.health <= 0) {
+                  deflector.health = 0;
+                  deflector.destroyed = true;
+                }
+                damagedCells.push(cellKey);
+              }
+              // Dañar Ametralladora
+              else if (machineGun) {
+                machineGun.health = (machineGun.health !== undefined ? machineGun.health : 500) - 30;
+                if (machineGun.health <= 0) {
+                  machineGun.health = 0;
+                  machineGun.destroyed = true;
+                }
+                damagedCells.push(cellKey);
+              }
+              // Dañar terreno
+              else if (!hasMine && !hasStatue && !hasFlower && !alreadyDamaged && !isWaterCell(nr, nc)) {
+                damagedCells.push(cellKey);
+                state.buildings.damaged.push({row: nr, col: nc});
+                
+                const cellToDestroy = $('islandGrid').querySelector(`[data-row="${nr}"][data-col="${nc}"]`);
+                if (cellToDestroy) {
+                  cellToDestroy.classList.remove('grass');
+                  cellToDestroy.classList.add('damaged');
+                  cellToDestroy.textContent = '';
+                }
+              }
+            }
+          }
+        }
+      }
+      
+      // Daño al castillo
+      if (castleHit) {
+        const castleSnap = await get(ref(db, `villages/${attackTarget.id}/castleHealth`));
+        let castleHealth = castleSnap.exists() ? castleSnap.val() : 100;
+        castleHealth = Math.max(0, castleHealth - 15);
+        await set(ref(db, `villages/${attackTarget.id}/castleHealth`), castleHealth);
+        
+        const castleCell = $('islandGrid').querySelector(`[data-row="${castlePos.row}"][data-col="${castlePos.col}"]`);
+        if (castleCell) {
+          castleCell.classList.add('explosion-flash');
+          setTimeout(() => castleCell.classList.remove('explosion-flash'), 300);
+        }
+        
+        if (castleHealth <= 0) {
+          await set(ref(db, `villages/${attackTarget.id}/destroyed`), true);
+          showXPNotification(0, window.innerWidth / 2 - 100, window.innerHeight / 2, '🏰 ¡CASTILLO DESTRUIDO!');
+        }
+      }
+    }, 1000);
+  }, 1200);
+}
 function showXPNotification(xp, x, y, message = '') {
   const notification = document.createElement('div');
   notification.className = 'xp-notification';
@@ -5135,11 +6178,18 @@ async function loadBuildings(owner) {
     superRocketLaunchers: b.superRocketLaunchers || [],
     aaTurrets: b.aaTurrets || [],
     deflectorTowers: b.deflectorTowers || [],
+    machineGuns: b.machineGuns || [],
+    warships: b.warships || [],
     statues: b.statues || [],
     flowers: b.flowers || [],
     damaged: b.damaged || []
   };
   updateShop();
+  
+  // Iniciar bombardeo de barcos si hay alguno
+  if (owner === state.user && state.buildings.warships.length > 0) {
+    startWarshipBombing();
+  }
 }
 async function addXP(amount) {
   // CRÍTICO: Solo dar XP si estás en tu propia aldea
@@ -5194,6 +6244,109 @@ function startGoldGen() {
       }
     }, 5000);
   }, firstDelay);
+}
+function startWarshipBombing() {
+  if (state.intervals.warships) return;
+  
+  state.intervals.warships = setInterval(async () => {
+    // Solo disparar si estoy en mi propia aldea
+    if (state.currentVillage.owner === state.user && state.buildings.warships.length > 0) {
+      for (const warship of state.buildings.warships) {
+        // Elegir un objetivo aleatorio en el mapa 20x20
+        const targetRow = Math.floor(Math.random() * 20); // 0-19
+        const targetCol = Math.floor(Math.random() * 20); // 0-19
+        
+        // Lanzar bomba desde el barco
+        await fireWarshipBomb(warship.row, warship.col, targetRow, targetCol);
+      }
+    }
+  }, 8000); // Disparar cada 8 segundos
+}
+async function fireWarshipBomb(fromRow, fromCol, targetRow, targetCol) {
+  const grid = $('islandGrid');
+  const warshipCell = grid.querySelector(`[data-row="${fromRow}"][data-col="${fromCol}"]`);
+  const targetCell = grid.querySelector(`[data-row="${targetRow}"][data-col="${targetCol}"]`);
+  
+  if (!warshipCell || !targetCell) return;
+  
+  const warshipRect = warshipCell.getBoundingClientRect();
+  const targetRect = targetCell.getBoundingClientRect();
+  
+  // Crear proyectil de bomba
+  const bomb = document.createElement('div');
+  bomb.textContent = '💣';
+  bomb.style.position = 'fixed';
+  bomb.style.fontSize = '30px';
+  bomb.style.left = (warshipRect.left + warshipRect.width / 2) + 'px';
+  bomb.style.top = (warshipRect.top + warshipRect.height / 2) + 'px';
+  bomb.style.zIndex = '10000';
+  bomb.style.pointerEvents = 'none';
+  document.body.appendChild(bomb);
+  
+  // Animar bomba hacia el objetivo
+  const duration = 1500;
+  bomb.style.transition = `all ${duration}ms ease-in`;
+  
+  setTimeout(() => {
+    bomb.style.left = (targetRect.left + targetRect.width / 2) + 'px';
+    bomb.style.top = (targetRect.top + targetRect.height / 2) + 'px';
+    bomb.style.transform = 'scale(1.5) rotate(360deg)';
+  }, 50);
+  
+  // Explosión al llegar
+  setTimeout(() => {
+    bomb.remove();
+    
+    // Efecto de explosión
+    const explosion = document.createElement('div');
+    explosion.textContent = '💥';
+    explosion.style.position = 'fixed';
+    explosion.style.fontSize = '60px';
+    explosion.style.left = (targetRect.left + targetRect.width / 2 - 30) + 'px';
+    explosion.style.top = (targetRect.top + targetRect.height / 2 - 30) + 'px';
+    explosion.style.zIndex = '10001';
+    explosion.style.pointerEvents = 'none';
+    document.body.appendChild(explosion);
+    
+    setTimeout(() => explosion.remove(), 500);
+    
+    // Aplicar daño en área 2x2
+    applyWarshipDamage(targetRow, targetCol);
+  }, duration);
+}
+async function applyWarshipDamage(centerRow, centerCol) {
+  const damageArea = [
+    {r: centerRow, c: centerCol},
+    {r: centerRow - 1, c: centerCol},
+    {r: centerRow + 1, c: centerCol},
+    {r: centerRow, c: centerCol - 1},
+    {r: centerRow, c: centerCol + 1}
+  ];
+  
+  for (const pos of damageArea) {
+    if (pos.r < 0 || pos.r >= 20 || pos.c < 0 || pos.c >= 20) continue;
+    
+    // Verificar si hay una estructura en esta posición y no es agua
+    const existingDamage = state.buildings.damaged.find(d => d.row === pos.r && d.col === pos.c);
+    if (!existingDamage && !isWaterCell(pos.r, pos.c)) {
+      state.buildings.damaged.push({row: pos.r, col: pos.c});
+    }
+  }
+  
+  // Guardar daño en Firebase
+  await set(ref(db, `users/${state.user}/buildings`), {
+    goldMines: state.buildings.mines,
+    rocketLaunchers: state.buildings.rocketLaunchers,
+    superRocketLaunchers: state.buildings.superRocketLaunchers,
+    aaTurrets: state.buildings.aaTurrets,
+    deflectorTowers: state.buildings.deflectorTowers,
+    machineGuns: state.buildings.machineGuns,
+    statues: state.buildings.statues,
+    flowers: state.buildings.flowers,
+    damaged: state.buildings.damaged
+  });
+  
+  renderIsland();
 }
 // UI Updates
 function updateUI() {
@@ -5811,8 +6964,12 @@ $('buyAATurretBtn').onclick = async () => {
   alert('Haz click en una celda verde para colocar la torreta anti-aérea');
 };
 $('buyDeflectorTowerBtn').onclick = async () => {
-  // Verificar si ya tiene el máximo
-  if (state.buildings.deflectorTowers.length >= 1) return alert('Ya tienes el máximo de torres desviadoras (1)');
+  // Contar torres construidas + en inventario
+  const inventoryCount = state.inventory.filter(item => item === 'deflectorTower').length;
+  const totalDeflectorTowers = state.buildings.deflectorTowers.length + inventoryCount;
+  
+  // Verificar si ya tiene el máximo (construidas + inventario)
+  if (totalDeflectorTowers >= 2) return alert('Ya tienes el máximo de torres desviadoras (2). Incluye las que tienes construidas y en inventario.');
   
   // Verificar oro
   if (state.resources.gold < 1500) return alert(`Necesitas 1500 de oro. Tienes ${state.resources.gold}.`);
@@ -5846,8 +7003,105 @@ $('buyDeflectorTowerBtn').onclick = async () => {
   await set(ref(db, `users/${state.user}/inventory/items`), currentInventory);
   state.inventory = currentInventory;
   
+  // Actualizar stock visual
+  const newStock = result.snapshot.val();
+  $('deflectorTowerStock').textContent = newStock;
+  
+  // Verificar límite después de comprar
+  const newInventoryCount = state.inventory.filter(item => item === 'deflectorTower').length;
+  const newTotalDeflectorTowers = state.buildings.deflectorTowers.length + newInventoryCount;
+  
+  if (newTotalDeflectorTowers >= 2) {
+    $('buyDeflectorTowerBtn').disabled = true;
+    $('buyDeflectorTowerBtn').textContent = 'Máximo alcanzado';
+  } else {
+    $('buyDeflectorTowerBtn').disabled = newStock <= 0;
+    $('buyDeflectorTowerBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
+  }
+  
   updateUI();
   alert('🛡️ Torre Desviadora comprada! Revisa tu inventario para colocarla.');
+};
+$('buyMachineGunBtn').onclick = async () => {
+  try {
+    loading(true);
+    console.log('Comprando ametralladora...');
+    
+    // Contar ametralladoras construidas + en inventario
+    const inventoryCount = state.inventory.filter(item => item === 'machineGun').length;
+    const totalMachineGuns = state.buildings.machineGuns.length + inventoryCount;
+    
+    // Verificar si ya tiene el máximo (construidas + inventario)
+    if (totalMachineGuns >= 3) {
+      loading(false);
+      return alert('Ya tienes el máximo de ametralladoras (3). Incluye las que tienes construidas y en inventario.');
+    }
+    
+    // Verificar oro
+    if (state.resources.gold < 5000) {
+      loading(false);
+      return alert(`Necesitas 5000 de oro. Tienes ${state.resources.gold}.`);
+    }
+    
+    // Verificar stock global
+    const stockSnap = await get(ref(db, 'globalShop/machineGun/stock'));
+    const stock = stockSnap.exists() ? stockSnap.val() : 3;
+    
+    if (stock <= 0) {
+      loading(false);
+      return alert('¡Agotado! No hay más Ametralladoras en stock.');
+    }
+    
+    // Usar transacción para reducir stock
+    const stockRef = ref(db, 'globalShop/machineGun/stock');
+    const result = await runTransaction(stockRef, (currentStock) => {
+      if (currentStock === null) return 3;
+      if (currentStock <= 0) return;
+      return currentStock - 1;
+    });
+    
+    if (!result.committed) {
+      loading(false);
+      return alert('Error al comprar. Intenta de nuevo.');
+    }
+    
+    // Deducir oro
+    state.resources.gold -= 5000;
+    await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+    
+    // Cargar inventario actual y agregar ametralladora
+    const inventorySnap = await get(ref(db, `users/${state.user}/inventory/items`));
+    const currentInventory = inventorySnap.exists() ? inventorySnap.val() : [];
+    currentInventory.push('machineGun');
+    
+    // Guardar inventario actualizado
+    await set(ref(db, `users/${state.user}/inventory/items`), currentInventory);
+    state.inventory = currentInventory;
+    
+    // Actualizar stock visual
+    const newStock = result.snapshot.val();
+    $('machineGunStock').textContent = newStock;
+    
+    // Verificar límite después de comprar
+    const newInventoryCount = state.inventory.filter(item => item === 'machineGun').length;
+    const newTotalMachineGuns = state.buildings.machineGuns.length + newInventoryCount;
+    
+    if (newTotalMachineGuns >= 3) {
+      $('buyMachineGunBtn').disabled = true;
+      $('buyMachineGunBtn').textContent = 'Máximo alcanzado';
+    } else {
+      $('buyMachineGunBtn').disabled = newStock <= 0;
+      $('buyMachineGunBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
+    }
+    
+    updateUI();
+    loading(false);
+    alert('🔫 Ametralladora comprada! Revisa tu inventario para colocarla.');
+  } catch (error) {
+    loading(false);
+    console.error('Error al comprar ametralladora:', error);
+    alert('Error al comprar ametralladora: ' + error.message);
+  }
 };
 $('buyBomberPlaneBtn').onclick = async () => {
   // Verificar oro
@@ -5878,12 +7132,60 @@ $('buyBomberPlaneBtn').onclick = async () => {
   const bomberCount = bomberSnap.exists() ? bomberSnap.val() : 0;
   await set(ref(db, `users/${state.user}/inventory/bomberPlanes`), bomberCount + 1);
   
+  // Actualizar stock visual
+  const newStock = result.snapshot.val();
+  $('bomberPlaneStock').textContent = newStock;
+  $('buyBomberPlaneBtn').disabled = newStock <= 0;
+  $('buyBomberPlaneBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
+  
   updateUI();
   alert('✈️ Avión Bombardero comprado! Úsalo desde el menú de ataque.');
 };
+$('buyWarshipBtn').onclick = async () => {
+  // Verificar oro
+  if (state.resources.gold < 3500) return alert(`Necesitas 3500 de oro. Tienes ${state.resources.gold}.`);
+  
+  // Verificar stock global
+  const stockSnap = await get(ref(db, 'globalShop/warship/stock'));
+  const stock = stockSnap.exists() ? stockSnap.val() : 5;
+  
+  if (stock <= 0) return alert('¡Agotado! No hay más Barcos de Guerra en stock.');
+  
+  // Usar transacción para reducir stock
+  const stockRef = ref(db, 'globalShop/warship/stock');
+  const result = await runTransaction(stockRef, (currentStock) => {
+    if (currentStock === null) return 5;
+    if (currentStock <= 0) return;
+    return currentStock - 1;
+  });
+  
+  if (!result.committed) return alert('Error al comprar. Intenta de nuevo.');
+  
+  // Deducir oro
+  state.resources.gold -= 3500;
+  await set(ref(db, `users/${state.user}/resources`), {gold: state.resources.gold, lastUpdate: Date.now()});
+  
+  // Incrementar cantidad de barcos
+  const warshipSnap = await get(ref(db, `users/${state.user}/inventory/warships`));
+  const warshipCount = warshipSnap.exists() ? warshipSnap.val() : 0;
+  await set(ref(db, `users/${state.user}/inventory/warships`), warshipCount + 1);
+  
+  // Actualizar stock visual
+  const newStock = result.snapshot.val();
+  $('warshipStock').textContent = newStock;
+  $('buyWarshipBtn').disabled = newStock <= 0;
+  $('buyWarshipBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
+  
+  updateUI();
+  alert('🚢 Barco de Guerra comprado! Úsalo desde el menú de ataque.');
+};
 $('buySuperRocketLauncherGlobalBtn').onclick = async () => {
-  // Verificar si ya tiene el máximo
-  if (state.buildings.superRocketLaunchers.length >= 1) return alert('Ya tienes el máximo de Super Lanzadores (1)');
+  // Contar super lanzadores construidos + en inventario
+  const inventoryCount = state.inventory.filter(item => item === 'superRocketLauncher').length;
+  const totalSuperLaunchers = state.buildings.superRocketLaunchers.length + inventoryCount;
+  
+  // Verificar si ya tiene el máximo (construidos + inventario)
+  if (totalSuperLaunchers >= 1) return alert('Ya tienes el máximo de Super Lanzadores (1). Incluye los que tienes construidos y en inventario.');
   
   // Verificar oro
   if (state.resources.gold < 10000) return alert(`Necesitas 10000 de oro. Tienes ${state.resources.gold}.`);
@@ -5916,6 +7218,22 @@ $('buySuperRocketLauncherGlobalBtn').onclick = async () => {
   // Guardar inventario actualizado
   await set(ref(db, `users/${state.user}/inventory/items`), currentInventory);
   state.inventory = currentInventory;
+  
+  // Actualizar stock visual
+  const newStock = result.snapshot.val();
+  $('superRocketLauncherStock').textContent = newStock;
+  
+  // Verificar límite después de comprar
+  const newInventoryCount = state.inventory.filter(item => item === 'superRocketLauncher').length;
+  const newTotalSuperLaunchers = state.buildings.superRocketLaunchers.length + newInventoryCount;
+  
+  if (newTotalSuperLaunchers >= 1) {
+    $('buySuperRocketLauncherGlobalBtn').disabled = true;
+    $('buySuperRocketLauncherGlobalBtn').textContent = 'Máximo alcanzado';
+  } else {
+    $('buySuperRocketLauncherGlobalBtn').disabled = newStock <= 0;
+    $('buySuperRocketLauncherGlobalBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
+  }
   
   updateUI();
   alert('💥 SUPER LANZADOR comprado! Revisa tu inventario para colocarlo. ⚠️ RECUERDA: Daña tu aldea al lanzar.');
@@ -6018,6 +7336,12 @@ $('buyStatueBtn').onclick = async () => {
     const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
     items.push('statue');
     await set(ref(db, `users/${state.user}/inventory/items`), items);
+    
+    // Actualizar stock visual
+    const newStock = result.snapshot.val().stock;
+    $('statueStock').textContent = newStock;
+    $('buyStatueBtn').disabled = newStock <= 0;
+    $('buyStatueBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
    
     alert('¡Compra exitosa! La estatua Moai ha sido añadida a tu inventario.');
   } catch(e) {
@@ -6028,6 +7352,14 @@ $('buyStatueBtn').onclick = async () => {
 $('buyRocketAmmoBtn').onclick = async () => {
   loading(true);
   try {
+    // Verificar si tiene al menos un lanzacohetes
+    const hasRocketLauncher = state.buildings.rocketLaunchers.length > 0;
+    if (!hasRocketLauncher) {
+      alert('¡Necesitas construir un Lanzacohetes primero antes de comprar munición!');
+      loading(false);
+      return;
+    }
+    
     // Obtener el oro actual desde Firebase
     const goldSnap = await get(ref(db, `users/${state.user}/resources`));
     const gold = goldSnap.exists() ? (goldSnap.val().gold || 0) : 0;
@@ -6069,6 +7401,12 @@ $('buyRocketAmmoBtn').onclick = async () => {
    
     const currentAmmo = (await get(ref(db, `users/${state.user}/inventory/rocketAmmo`))).val() || 0;
     await set(ref(db, `users/${state.user}/inventory/rocketAmmo`), currentAmmo + 1);
+    
+    // Actualizar stock visual
+    const newStock = result.snapshot.val().stock;
+    $('rocketAmmoStock').textContent = newStock;
+    $('buyRocketAmmoBtn').disabled = newStock <= 0;
+    $('buyRocketAmmoBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
    
     alert('¡Compra exitosa! Has comprado 1 cohete.');
   } catch(e) {
@@ -6079,6 +7417,14 @@ $('buyRocketAmmoBtn').onclick = async () => {
 $('buySuperRocketAmmoBtn').onclick = async () => {
   loading(true);
   try {
+    // Verificar si tiene al menos un super lanzacohetes
+    const hasSuperRocketLauncher = state.buildings.superRocketLaunchers.length > 0;
+    if (!hasSuperRocketLauncher) {
+      alert('¡Necesitas construir un Super Lanzacohetes primero antes de comprar munición!');
+      loading(false);
+      return;
+    }
+    
     // Obtener el oro actual desde Firebase
     const goldSnap = await get(ref(db, `users/${state.user}/resources`));
     const gold = goldSnap.exists() ? (goldSnap.val().gold || 0) : 0;
@@ -6120,6 +7466,12 @@ $('buySuperRocketAmmoBtn').onclick = async () => {
    
     const currentAmmo = (await get(ref(db, `users/${state.user}/inventory/superRocketAmmo`))).val() || 0;
     await set(ref(db, `users/${state.user}/inventory/superRocketAmmo`), currentAmmo + 1);
+    
+    // Actualizar stock visual
+    const newStock = result.snapshot.val().stock;
+    $('superRocketAmmoStock').textContent = newStock;
+    $('buySuperRocketAmmoBtn').disabled = newStock <= 0;
+    $('buySuperRocketAmmoBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
    
     alert('💥 ¡Compra exitosa! Has comprado 1 SUPER COHETE. ¡Úsalo con precaución!');
   } catch(e) {
@@ -6172,6 +7524,12 @@ $('buyFlowerBtn').onclick = async () => {
     const items = (await get(ref(db, `users/${state.user}/inventory/items`))).val() || [];
     items.push('flower');
     await set(ref(db, `users/${state.user}/inventory/items`), items);
+    
+    // Actualizar stock visual
+    const newStock = result.snapshot.val().stock;
+    $('flowerStock').textContent = newStock;
+    $('buyFlowerBtn').disabled = newStock <= 0;
+    $('buyFlowerBtn').textContent = newStock <= 0 ? 'Agotado' : 'Comprar';
    
     alert('¡Compra exitosa! La flor decorativa ha sido añadida a tu inventario.');
   } catch(e) {
@@ -6191,6 +7549,18 @@ document.querySelectorAll('.attack-option').forEach(btn => {
     loading(true);
    
     if (type === 'rocket') {
+      // Verificar si el usuario tiene lanzadores de cohetes funcionales
+      const userBuildingsSnap = await get(ref(db, `users/${state.user}/buildings/rocketLaunchers`));
+      const rocketLaunchers = userBuildingsSnap.exists() ? userBuildingsSnap.val() : [];
+      const functionalLaunchers = rocketLaunchers.filter(rl => !rl.destroyed && rl.health > 0);
+      
+      if (functionalLaunchers.length === 0) {
+        alert('❌ No tienes Lanza Cohetes funcionales!\n\n🔧 Construye uno nuevo o repara los destruidos para poder lanzar cohetes.');
+        await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+        loading(false);
+        return;
+      }
+      
       // Verificar si el usuario tiene munición de cohetes
       const rocketAmmoSnap = await get(ref(db, `users/${state.user}/inventory/rocketAmmo`));
       const rocketAmmo = rocketAmmoSnap.exists() ? rocketAmmoSnap.val() : 0;
@@ -6210,6 +7580,18 @@ document.querySelectorAll('.attack-option').forEach(btn => {
     }
     
     if (type === 'superRocket') {
+      // Verificar si el usuario tiene super lanzadores funcionales
+      const userBuildingsSnap = await get(ref(db, `users/${state.user}/buildings/superRocketLaunchers`));
+      const superRocketLaunchers = userBuildingsSnap.exists() ? userBuildingsSnap.val() : [];
+      const functionalSuperLaunchers = superRocketLaunchers.filter(srl => !srl.destroyed && srl.health > 0);
+      
+      if (functionalSuperLaunchers.length === 0) {
+        alert('❌ No tienes Super Lanzadores funcionales!\n\n🔧 Construye uno nuevo o repara los destruidos para poder lanzar super cohetes.');
+        await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+        loading(false);
+        return;
+      }
+      
       // Verificar si el usuario tiene munición de super cohetes
       const superRocketAmmoSnap = await get(ref(db, `users/${state.user}/inventory/superRocketAmmo`));
       const superRocketAmmo = superRocketAmmoSnap.exists() ? superRocketAmmoSnap.val() : 0;
@@ -6244,6 +7626,25 @@ document.querySelectorAll('.attack-option').forEach(btn => {
       state.placing = 'bomber_attack';
       loading(false);
       alert('Haz click en una celda para iniciar el bombardeo en línea recta');
+      return;
+    }
+    
+    if (type === 'warship') {
+      // Verificar si el usuario tiene barcos de guerra
+      const warshipSnap = await get(ref(db, `users/${state.user}/inventory/warships`));
+      const warshipCount = warshipSnap.exists() ? warshipSnap.val() : 0;
+      
+      if (warshipCount <= 0) {
+        alert('¡Necesitas un Barco de Guerra! Cómpralo en la tienda global.');
+        await set(ref(db, `villages/${state.currentVillage.id}/underAttack`), false);
+        loading(false);
+        return;
+      }
+      
+      state.attacking = true;
+      state.placing = 'warship_attack';
+      loading(false);
+      alert('🚢 Haz click en una celda de AGUA para colocar el barco. El barco bombardeará la aldea.');
       return;
     }
     
@@ -6446,15 +7847,40 @@ $('inventoryButton').onclick = async () => {
   
   const rocketAmmoSnap = await get(ref(db, `users/${state.user}/inventory/rocketAmmo`));
   const rocketAmmo = rocketAmmoSnap.exists() ? rocketAmmoSnap.val() : 0;
+  
+  const bomberSnap = await get(ref(db, `users/${state.user}/inventory/bomberPlanes`));
+  const bomberCount = bomberSnap.exists() ? bomberSnap.val() : 0;
+  
+  const warshipSnap = await get(ref(db, `users/${state.user}/inventory/warships`));
+  const warshipCount = warshipSnap.exists() ? warshipSnap.val() : 0;
+  
   loading(false);
  
-  $('inventoryItems').innerHTML = state.inventory.length || rocketAmmo > 0 ? 
+  $('inventoryItems').innerHTML = state.inventory.length || rocketAmmo > 0 || bomberCount > 0 || warshipCount > 0 ? 
     (rocketAmmo > 0 ? `
       <div class="shop-item">
         <div class="shop-item-info">
           <div class="shop-item-name">🚀 Cohetes</div>
           <div class="shop-item-desc">Municiones para el lanza cohetes</div>
           <div class="shop-item-desc">Cantidad: ${rocketAmmo}</div>
+        </div>
+      </div>
+    ` : '') +
+    (bomberCount > 0 ? `
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">✈️ Aviones Bombarderos</div>
+          <div class="shop-item-desc">Bombardea en línea recta, daño 3x3 por bomba</div>
+          <div class="shop-item-desc">Cantidad: ${bomberCount}</div>
+        </div>
+      </div>
+    ` : '') +
+    (warshipCount > 0 ? `
+      <div class="shop-item">
+        <div class="shop-item-info">
+          <div class="shop-item-name">🚢 Barcos de Guerra</div>
+          <div class="shop-item-desc">Se coloca en agua y bombardea la aldea (500 HP, 10 bombas)</div>
+          <div class="shop-item-desc">Cantidad: ${warshipCount}</div>
         </div>
       </div>
     ` : '') + 
@@ -6466,6 +7892,8 @@ $('inventoryButton').onclick = async () => {
         info = {name: '🌸 Flor Decorativa', desc: 'Hermosa flor para decorar tu aldea'};
       } else if (item === 'deflectorTower') {
         info = {name: '🛡️ Torre Desviadora', desc: 'Desvía cohetes enemigos al mar'};
+      } else if (item === 'machineGun') {
+        info = {name: '🔫 Ametralladora', desc: 'Defiende contra barcos enemigos (500 HP, rango 5)'};
       } else if (item === 'superRocketLauncher') {
         info = {name: '💥 Super Lanzador', desc: 'Lanza Super Cohetes devastadores (15x15) ⚠️ Daña tu aldea'};
       } else if (item.startsWith('shovel_')) {
@@ -6493,6 +7921,7 @@ window.useItem = i => {
   const isStatue = state.placing === 'statue';
   const isFlower = state.placing === 'flower';
   const isDeflectorTower = state.placing === 'deflectorTower';
+  const isMachineGun = state.placing === 'machineGun';
   const isSuperRocketLauncher = state.placing === 'superRocketLauncher';
   const shovelLevel = isShovel ? state.placing.split('_')[1] : '1';
   
@@ -6501,7 +7930,9 @@ window.useItem = i => {
   } else if (isFlower) {
     alert('Haz click en una celda verde para colocar la flor');
   } else if (isDeflectorTower) {
-    alert('Haz click en una celda verde para colocar la Torre Desviadora (protege contra cohetes en rango de 3 celdas)');
+    alert('Haz click en una celda verde para colocar la Torre Desviadora (protege contra cohetes en rango de 5 celdas)');
+  } else if (isMachineGun) {
+    alert('Haz click en una celda verde para colocar la Ametralladora (defiende contra barcos, 500 HP, rango 5)');
   } else if (isSuperRocketLauncher) {
     alert('⚠️ Haz click en una celda verde para colocar el SUPER LANZADOR. ¡CUIDADO: Daña tu aldea al despegar!');
   } else if (isShovel) {
@@ -6813,6 +8244,27 @@ $('globalShopButton').onclick = async () => {
     state.resources.gold = goldSnap.val().gold || 0;
   }
   
+  // Cargar inventario y buildings del usuario para verificar límites
+  const inventorySnap = await get(ref(db, `users/${state.user}/inventory/items`));
+  state.inventory = inventorySnap.exists() ? inventorySnap.val() : [];
+  
+  const buildingsSnap = await get(ref(db, `users/${state.user}/buildings`));
+  if (buildingsSnap.exists()) {
+    const b = buildingsSnap.val();
+    state.buildings = {
+      mines: b.goldMines || b.mines || [],
+      rocketLaunchers: b.rocketLaunchers || [],
+      superRocketLaunchers: b.superRocketLaunchers || [],
+      aaTurrets: b.aaTurrets || [],
+      deflectorTowers: b.deflectorTowers || [],
+      machineGuns: b.machineGuns || [],
+      warships: b.warships || [],
+      statues: b.statues || [],
+      flowers: b.flowers || [],
+      damaged: b.damaged || []
+    };
+  }
+  
   // Inicializar stock si no existe
   let statueSnap = await get(ref(db, 'globalShop/statue'));
   if (!statueSnap.exists()) {
@@ -6855,7 +8307,19 @@ $('globalShopButton').onclick = async () => {
     await set(ref(db, 'globalShop/superRocketLauncher'), {stock: 3, visible: true});
     superRocketLauncherSnap = await get(ref(db, 'globalShop/superRocketLauncher'));
   }
- 
+  
+  let machineGunSnap = await get(ref(db, 'globalShop/machineGun'));
+  if (!machineGunSnap.exists()) {
+    await set(ref(db, 'globalShop/machineGun'), {stock: 3, visible: true});
+    machineGunSnap = await get(ref(db, 'globalShop/machineGun'));
+  }
+  
+  let warshipSnap = await get(ref(db, 'globalShop/warship'));
+  if (!warshipSnap.exists()) {
+    await set(ref(db, 'globalShop/warship'), {stock: 5, visible: true});
+    warshipSnap = await get(ref(db, 'globalShop/warship'));
+  }
+
   const statueStock = statueSnap.val().stock || 0;
   const statueVisible = statueSnap.val().visible !== false;
   const rocketAmmoStock = rocketAmmoSnap.val().stock || 0;
@@ -6870,6 +8334,10 @@ $('globalShopButton').onclick = async () => {
   const superRocketAmmoVisible = superRocketAmmoSnap.val().visible !== false;
   const superRocketLauncherStock = superRocketLauncherSnap.val().stock || 0;
   const superRocketLauncherVisible = superRocketLauncherSnap.val().visible !== false;
+  const machineGunStock = machineGunSnap.val().stock || 0;
+  const machineGunVisible = machineGunSnap.val().visible !== false;
+  const warshipStock = warshipSnap.val().stock || 0;
+  const warshipVisible = warshipSnap.val().visible !== false;
   
   loading(false);
   show(modal('globalShop'));
@@ -6896,10 +8364,19 @@ $('globalShopButton').onclick = async () => {
   $('buyFlowerBtn').disabled = flowerStock <= 0;
   $('buyFlowerBtn').textContent = flowerStock <= 0 ? 'Agotado' : 'Comprar';
   
+  // Torre Desviadora - verificar límite del jugador
+  const deflectorInventoryCount = state.inventory.filter(item => item === 'deflectorTower').length;
+  const totalDeflectorTowers = state.buildings.deflectorTowers.length + deflectorInventoryCount;
   $('deflectorTowerStock').textContent = deflectorTowerStock;
   $('deflectorTowerItem').style.display = deflectorTowerVisible ? 'flex' : 'none';
-  $('buyDeflectorTowerBtn').disabled = deflectorTowerStock <= 0;
-  $('buyDeflectorTowerBtn').textContent = deflectorTowerStock <= 0 ? 'Agotado' : 'Comprar';
+  
+  if (totalDeflectorTowers >= 2) {
+    $('buyDeflectorTowerBtn').disabled = true;
+    $('buyDeflectorTowerBtn').textContent = 'Máximo alcanzado';
+  } else {
+    $('buyDeflectorTowerBtn').disabled = deflectorTowerStock <= 0;
+    $('buyDeflectorTowerBtn').textContent = deflectorTowerStock <= 0 ? 'Agotado' : 'Comprar';
+  }
   
   $('bomberPlaneStock').textContent = bomberPlaneStock;
   $('bomberPlaneItem').style.display = bomberPlaneVisible ? 'flex' : 'none';
@@ -6911,10 +8388,38 @@ $('globalShopButton').onclick = async () => {
   $('buySuperRocketAmmoBtn').disabled = superRocketAmmoStock <= 0;
   $('buySuperRocketAmmoBtn').textContent = superRocketAmmoStock <= 0 ? 'Agotado' : 'Comprar';
   
+  // Super Lanzador - verificar límite del jugador
+  const superLauncherInventoryCount = state.inventory.filter(item => item === 'superRocketLauncher').length;
+  const totalSuperLaunchers = state.buildings.superRocketLaunchers.length + superLauncherInventoryCount;
   $('superRocketLauncherStock').textContent = superRocketLauncherStock;
   $('superRocketLauncherItem').style.display = superRocketLauncherVisible ? 'flex' : 'none';
-  $('buySuperRocketLauncherGlobalBtn').disabled = superRocketLauncherStock <= 0;
-  $('buySuperRocketLauncherGlobalBtn').textContent = superRocketLauncherStock <= 0 ? 'Agotado' : 'Comprar';
+  
+  if (totalSuperLaunchers >= 1) {
+    $('buySuperRocketLauncherGlobalBtn').disabled = true;
+    $('buySuperRocketLauncherGlobalBtn').textContent = 'Máximo alcanzado';
+  } else {
+    $('buySuperRocketLauncherGlobalBtn').disabled = superRocketLauncherStock <= 0;
+    $('buySuperRocketLauncherGlobalBtn').textContent = superRocketLauncherStock <= 0 ? 'Agotado' : 'Comprar';
+  }
+  
+  // Ametralladora - verificar límite del jugador
+  const machineGunInventoryCount = state.inventory.filter(item => item === 'machineGun').length;
+  const totalMachineGuns = state.buildings.machineGuns.length + machineGunInventoryCount;
+  $('machineGunStock').textContent = machineGunStock;
+  $('machineGunItem').style.display = machineGunVisible ? 'flex' : 'none';
+  
+  if (totalMachineGuns >= 3) {
+    $('buyMachineGunBtn').disabled = true;
+    $('buyMachineGunBtn').textContent = 'Máximo alcanzado';
+  } else {
+    $('buyMachineGunBtn').disabled = machineGunStock <= 0;
+    $('buyMachineGunBtn').textContent = machineGunStock <= 0 ? 'Agotado' : 'Comprar';
+  }
+  
+  $('warshipStock').textContent = warshipStock;
+  $('warshipItem').style.display = warshipVisible ? 'flex' : 'none';
+  $('buyWarshipBtn').disabled = warshipStock <= 0;
+  $('buyWarshipBtn').textContent = warshipStock <= 0 ? 'Agotado' : 'Comprar';
 };
 // Drag & Zoom
 function setupDrag(viewport, world, view) {
